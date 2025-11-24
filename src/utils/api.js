@@ -1,13 +1,23 @@
 // API utilities for systems management
 
-const API_BASE = 'http://localhost:3001/api/systems';
+const API_BASE = 'http://127.0.0.1:3001/api/systems';
 
 export const systemsAPI = {
     // Get all systems
     getAll: async () => {
-        const response = await fetch(API_BASE);
-        if (!response.ok) throw new Error('Failed to fetch systems');
-        return response.json();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+        try {
+            console.log('Fetching systems from:', API_BASE);
+            const response = await fetch(API_BASE, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error('Failed to fetch systems');
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
     },
 
     // Get single system

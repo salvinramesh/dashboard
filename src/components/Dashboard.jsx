@@ -42,7 +42,7 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
 
     const cpuData = history.map(h => ({
         time: h.timestamp,
-        load: h.cpu
+        load: typeof h.cpu === 'object' ? h.cpu.load : h.cpu
     }));
 
     const memData = history.map(h => ({
@@ -110,7 +110,43 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                         </div>
                     </header>
 
-                    {/* Grid */}
+                    {/* Summary Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <MetricCard
+                            title="CPU Usage"
+                            value={`${(typeof stats.cpu === 'object' ? stats.cpu.load : stats.cpu).toFixed(1)}%`}
+                            subValue={`${typeof stats.cpu === 'object' ? stats.cpu.cores : '?'} Cores`}
+                            icon={Cpu}
+                            trend={+2.5}
+                            color="blue"
+                        />
+                        <MetricCard
+                            title="Memory Usage"
+                            value={`${(stats.mem.used / 1024 / 1024 / 1024).toFixed(1)} GB`}
+                            subValue={`${(stats.mem.total / 1024 / 1024 / 1024).toFixed(1)} GB Total`}
+                            icon={Zap}
+                            trend={-1.2}
+                            color="purple"
+                        />
+                        <MetricCard
+                            title="Disk Usage"
+                            value={stats.disk && stats.disk[0] ? `${(stats.disk[0].used / 1024 / 1024 / 1024).toFixed(1)} GB` : 'N/A'}
+                            subValue={stats.disk && stats.disk[0] ? `${(stats.disk[0].size / 1024 / 1024 / 1024).toFixed(1)} GB Total` : 'No Data'}
+                            icon={Server}
+                            trend={0}
+                            color="orange"
+                        />
+                        <MetricCard
+                            title="Network Traffic"
+                            value={`${(stats.network[0]?.rx_sec / 1024).toFixed(1)} KB/s`}
+                            subValue="Total Bandwidth"
+                            icon={Network}
+                            trend={+5.4}
+                            color="green"
+                        />
+                    </div>
+
+                    {/* Charts Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                         {/* CPU */}
@@ -144,16 +180,20 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                             <div className="mt-6 flex items-end justify-between">
                                 <div>
                                     <p className="text-4xl font-bold text-white tracking-tighter">
-                                        {stats.cpu.toFixed(1)}
+                                        {(typeof stats.cpu === 'object' ? stats.cpu.load : stats.cpu).toFixed(1)}
                                         <span className="text-lg text-zinc-500 font-normal ml-1">%</span>
                                     </p>
-                                    <p className="text-zinc-500 text-sm mt-1">Real-time utilization</p>
+                                    <p className="text-zinc-500 text-sm mt-1">
+                                        {typeof stats.cpu === 'object'
+                                            ? `${stats.cpu.cores} Cores / ${stats.cpu.brand}`
+                                            : 'Real-time utilization'}
+                                    </p>
                                 </div>
                                 <div className="flex gap-1">
                                     {[...Array(5)].map((_, i) => (
                                         <div
                                             key={i}
-                                            className={`w-1.5 h-6 rounded-full ${i < stats.cpu / 20 ? 'bg-blue-500' : 'bg-zinc-800'}`}
+                                            className={`w-1.5 h-6 rounded-full ${i < (typeof stats.cpu === 'object' ? stats.cpu.load : stats.cpu) / 20 ? 'bg-blue-500' : 'bg-zinc-800'}`}
                                         />
                                     ))}
                                 </div>
@@ -206,6 +246,8 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                                 </div>
                             </div>
                         </MetricCard>
+
+
 
                         {/* Network */}
                         <MetricCard title="Network Traffic" className="col-span-1 lg:col-span-3">

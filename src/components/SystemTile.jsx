@@ -46,8 +46,8 @@ export const SystemTile = ({ system, onClick }) => {
             {/* Status Indicator */}
             <div className="absolute top-4 right-4 flex items-center gap-2">
                 <div className={`w-2.5 h-2.5 rounded-full ${status === 'online' ? 'bg-green-500 animate-pulse' :
-                        status === 'offline' ? 'bg-red-500' :
-                            'bg-yellow-500 animate-pulse'
+                    status === 'offline' ? 'bg-red-500' :
+                        'bg-yellow-500 animate-pulse'
                     }`}></div>
                 <span className="text-xs text-zinc-500 uppercase font-bold">
                     {status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Checking...'}
@@ -72,7 +72,7 @@ export const SystemTile = ({ system, onClick }) => {
                             <span className="text-xs text-zinc-500 font-bold uppercase">CPU</span>
                         </div>
                         <p className="text-lg font-mono text-white">
-                            {stats.cpu.toFixed(0)}<span className="text-xs text-zinc-600">%</span>
+                            {(typeof stats.cpu === 'object' ? stats.cpu.load : stats.cpu).toFixed(0)}<span className="text-xs text-zinc-600">%</span>
                         </p>
                     </div>
                     <div className="bg-zinc-900/50 rounded-xl p-3">

@@ -4,6 +4,8 @@ const pool = require('../db');
 
 // GET /api/systems - Get all systems
 router.get('/', async (req, res) => {
+    console.log('GET /api/systems request received');
+    console.log('Headers:', req.headers);
     try {
         const result = await pool.query(
             'SELECT * FROM systems ORDER BY created_at ASC'

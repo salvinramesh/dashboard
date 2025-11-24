@@ -9,16 +9,31 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json()); // Parse JSON request bodies
 
+// Global request logger
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    next();
+});
+
 // Systems API routes
 app.use('/api/systems', systemsRouter);
 
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+});
+
 app.get('/api/stats', async (req, res) => {
     try {
-        const [cpu, mem, networkStats, osInfo] = await Promise.all([
+        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize] = await Promise.all([
             si.currentLoad(),
             si.mem(),
             si.networkStats(),
-            si.osInfo()
+            si.osInfo(),
+            si.cpu(),
+            si.fsSize()
         ]);
 
         // Calculate network speed (simplified for this demo)
@@ -33,13 +48,18 @@ app.get('/api/stats', async (req, res) => {
         // si.networkStats() returns rx_sec which is bytes per second if supported.
 
         res.json({
-            cpu: cpu.currentLoad,
+            cpu: {
+                load: cpu.currentLoad,
+                cores: cpuInfo.cores, // or physicalCores
+                brand: cpuInfo.brand
+            },
             mem: {
                 total: mem.total,
                 used: mem.used,
                 active: mem.active,
                 available: mem.available
             },
+            disk: fsSize, // Array of filesystems
             network: networkStats.map(iface => ({
                 iface: iface.iface,
                 rx_sec: iface.rx_sec,

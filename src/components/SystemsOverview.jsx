@@ -7,6 +7,7 @@ import { LayoutGrid } from 'lucide-react';
 export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadSystems();
@@ -15,10 +16,12 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
     const loadSystems = async () => {
         try {
             setLoading(true);
+            setError(null);
             const data = await systemsAPI.getAll();
             setSystems(data);
         } catch (error) {
             console.error('Failed to load systems:', error);
+            setError(error.message);
         } finally {
             setLoading(false);
         }
@@ -28,6 +31,23 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
         return (
             <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex items-center justify-center">
                 <div className="text-zinc-500 font-mono animate-pulse">Loading systems...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex items-center justify-center">
+                <div className="text-red-500 font-mono text-center">
+                    <p className="text-xl mb-2">Failed to load systems</p>
+                    <p className="text-sm opacity-70">{error}</p>
+                    <button
+                        onClick={loadSystems}
+                        className="mt-4 px-4 py-2 bg-zinc-900 rounded-lg hover:bg-zinc-800 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
             </div>
         );
     }
