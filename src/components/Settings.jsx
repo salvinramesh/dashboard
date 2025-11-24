@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
-import { getSystems, colorThemes } from '../config/systems';
-import { saveSystemsToStorage, generateId, deleteSystem } from '../utils/storage';
+import { colorThemes } from '../config/systems';
+import { systemsAPI, generateId } from '../utils/api';
 import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 
-export const Settings = ({ onBack }) => {
-    const [systems, setSystems] = useState(getSystems());
+export const Settings = ({ onBack, currentPage, onNavigate }) => {
+    const [systems, setSystems] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [editingSystem, setEditingSystem] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [formData, setFormData] = useState({
         id: '',
         name: '',
@@ -16,6 +18,24 @@ export const Settings = ({ onBack }) => {
         color: 'blue',
         icon: '🖥️'
     });
+
+    // Fetch systems on mount
+    useEffect(() => {
+        loadSystems();
+    }, []);
+
+    const loadSystems = async () => {
+        try {
+            setLoading(true);
+            const data = await systemsAPI.getAll();
+            setSystems(data);
+        } catch (error) {
+            console.error('Failed to load systems:', error);
+            alert('Failed to load systems from database');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const colorOptions = Object.keys(colorThemes);
     const iconOptions = ['🖥️', '💻', '🚀', '⚡', '🔧', '📊', '🌐', '☁️', '🔒', '⚙️'];
@@ -44,15 +64,30 @@ export const Settings = ({ onBack }) => {
         setShowForm(true);
     };
 
-    const handleDelete = (id) => {
-        if (confirm('Are you sure you want to delete this system?')) {
-            deleteSystem(id);
-            const updated = getSystems();
-            setSystems(updated);
+    const handleDeleteClick = (id, e) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (deleteConfirmId) {
+            try {
+                await systemsAPI.delete(deleteConfirmId);
+                await loadSystems(); // Reload from database
+                setDeleteConfirmId(null);
+            } catch (error) {
+                console.error('Failed to delete system:', error);
+                alert('Failed to delete system: ' + error.message);
+            }
         }
     };
 
-    const handleSubmit = (e) => {
+    const cancelDelete = () => {
+        setDeleteConfirmId(null);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validation
@@ -69,19 +104,35 @@ export const Settings = ({ onBack }) => {
             return;
         }
 
-        let updated;
-        if (editingSystem) {
-            // Update existing
-            updated = systems.map(s => s.id === editingSystem ? formData : s);
-        } else {
-            // Add new
-            updated = [...systems, formData];
-        }
+        try {
+            if (editingSystem) {
+                // Update existing
+                await systemsAPI.update(editingSystem, {
+                    name: formData.name,
+                    description: formData.description,
+                    apiUrl: formData.apiUrl,
+                    color: formData.color,
+                    icon: formData.icon
+                });
+            } else {
+                // Add new
+                await systemsAPI.create({
+                    id: formData.id,
+                    name: formData.name,
+                    description: formData.description,
+                    apiUrl: formData.apiUrl,
+                    color: formData.color,
+                    icon: formData.icon
+                });
+            }
 
-        saveSystemsToStorage(updated);
-        setSystems(updated);
-        setShowForm(false);
-        setEditingSystem(null);
+            await loadSystems(); // Reload from database
+            setShowForm(false);
+            setEditingSystem(null);
+        } catch (error) {
+            console.error('Failed to save system:', error);
+            alert('Failed to save system: ' + error.message);
+        }
     };
 
     const handleCancel = () => {
@@ -91,7 +142,7 @@ export const Settings = ({ onBack }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar />
+            <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-6xl mx-auto">
@@ -251,6 +302,7 @@ export const Settings = ({ onBack }) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
+                                        type="button"
                                         onClick={() => handleEdit(system)}
                                         className="p-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg transition-colors"
                                         title="Edit"
@@ -258,7 +310,8 @@ export const Settings = ({ onBack }) => {
                                         <Edit2 size={18} />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(system.id)}
+                                        type="button"
+                                        onClick={(e) => handleDeleteClick(system.id, e)}
                                         className="p-2 bg-zinc-800 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
                                         title="Delete"
                                     >
@@ -268,6 +321,32 @@ export const Settings = ({ onBack }) => {
                             </div>
                         ))}
                     </div>
+
+                    {/* Delete Confirmation Modal */}
+                    {deleteConfirmId && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl">
+                                <h3 className="text-xl font-bold text-white mb-2">Delete System</h3>
+                                <p className="text-zinc-400 mb-6">
+                                    Are you sure you want to delete this system? This action cannot be undone.
+                                </p>
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        onClick={cancelDelete}
+                                        className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

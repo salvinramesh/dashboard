@@ -1,12 +1,30 @@
 // Configuration for all monitored systems
-import { getStoredSystems } from '../utils/storage';
+// Now fetched from database via API
 
-const defaultSystems = [
+const API_URL = 'http://localhost:3001/api/systems';
+
+// Fetch systems from API
+export const fetchSystems = async () => {
+    try {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+            throw new Error('Failed to fetch systems');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching systems:', error);
+        // Return default systems as fallback
+        return getDefaultSystems();
+    }
+};
+
+// Default systems (fallback)
+const getDefaultSystems = () => [
     {
         id: 'local-primary',
         name: 'Primary Server',
         description: 'Main production server',
-        apiUrl: 'http://localhost:3001',
+        api_url: 'http://localhost:3001',
         color: 'blue',
         icon: '🖥️'
     },
@@ -14,24 +32,22 @@ const defaultSystems = [
         id: 'local-secondary',
         name: 'Development Server',
         description: 'Development environment',
-        apiUrl: 'http://localhost:3002',
+        api_url: 'http://localhost:3002',
         color: 'purple',
         icon: '💻'
     }
 ];
 
-// Get all systems - merge default with localStorage
+// Legacy sync function - kept for backwards compatibility
+// Will be removed once all components use async fetch
 export const getSystems = () => {
-    const stored = getStoredSystems();
-    return stored !== null ? stored : defaultSystems;
+    return getDefaultSystems();
 };
 
-// Legacy export for backwards compatibility
-export const systems = getSystems();
-
 // Helper function to get system by ID
-export const getSystemById = (id) => {
-    return getSystems().find(system => system.id === id);
+export const getSystemById = async (id) => {
+    const systems = await fetchSystems();
+    return systems.find(system => system.id === id);
 };
 
 // Color mappings for different themes

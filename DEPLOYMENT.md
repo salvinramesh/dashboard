@@ -4,14 +4,6 @@ This guide explains what you need to install on any system you want to monitor w
 
 ## Prerequisites
 
-### Required Software
-1. **Node.js** (v18 or higher)
-   - Download from: https://nodejs.org/
-   - Or install via package manager:
-     ```bash
-     # Ubuntu/Debian
-     curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-     sudo apt-get install -y nodejs
      
      # CentOS/RHEL
      curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -

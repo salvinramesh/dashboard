@@ -1,11 +1,16 @@
 const express = require('express');
 const si = require('systeminformation');
 const cors = require('cors');
+const systemsRouter = require('./routes/systems');
 
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
+app.use(express.json()); // Parse JSON request bodies
+
+// Systems API routes
+app.use('/api/systems', systemsRouter);
 
 app.get('/api/stats', async (req, res) => {
     try {

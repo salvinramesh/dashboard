@@ -23,7 +23,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     return null;
 };
 
-export const Dashboard = ({ system, onBack }) => {
+export const Dashboard = ({ system, onBack, onNavigate }) => {
     const { stats, history, loading, error } = useSystemStats(system?.apiUrl);
 
     if (loading) return (
@@ -59,7 +59,7 @@ export const Dashboard = ({ system, onBack }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-blue-500/30">
-            <Sidebar currentPage={system ? 'detail' : 'overview'} onNavigate={onBack ? () => onBack() : undefined} />
+            <Sidebar currentPage={system ? 'detail' : 'overview'} onNavigate={onNavigate} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">
