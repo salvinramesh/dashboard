@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { SystemTile } from './SystemTile';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Search } from 'lucide-react';
 
 export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredSystems = systems.filter(system =>
+        system.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (system.description && system.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (system.api_url && system.api_url.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
     useEffect(() => {
         loadSystems();
@@ -62,13 +69,27 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">
                     {/* Header */}
                     <header className="mb-12">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center">
-                                <LayoutGrid className="text-blue-400" size={24} />
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center">
+                                    <LayoutGrid className="text-blue-400" size={24} />
+                                </div>
+                                <h1 className="text-4xl font-bold text-white tracking-tight">
+                                    System Overview
+                                </h1>
                             </div>
-                            <h1 className="text-4xl font-bold text-white tracking-tight">
-                                System Overview
-                            </h1>
+
+                            {/* Search Bar */}
+                            <div className="relative w-full md:w-96">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search systems..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                />
+                            </div>
                         </div>
                         <p className="text-zinc-500 text-lg">
                             Monitor and manage all your connected systems from one centralized dashboard
@@ -77,7 +98,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
 
                     {/* Systems Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {systems.map(system => (
+                        {filteredSystems.map(system => (
                             <SystemTile
                                 key={system.id}
                                 system={{
