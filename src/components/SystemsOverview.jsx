@@ -54,7 +54,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
+            <Sidebar currentPage={currentPage} onNavigate={onNavigate} showSystemLinks={false} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">

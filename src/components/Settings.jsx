@@ -4,7 +4,7 @@ import { colorThemes } from '../config/systems';
 import { systemsAPI, generateId } from '../utils/api';
 import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 
-export const Settings = ({ onBack, currentPage, onNavigate }) => {
+export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = true }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingSystem, setEditingSystem] = useState(null);
@@ -142,7 +142,7 @@ export const Settings = ({ onBack, currentPage, onNavigate }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
+            <Sidebar currentPage={currentPage} onNavigate={onNavigate} showSystemLinks={showSystemLinks} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-6xl mx-auto">

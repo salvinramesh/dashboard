@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Server, Settings, Activity, Shield } from 'lucide-react';
 
-export const Sidebar = ({ currentPage, onNavigate }) => {
+export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
         <div className="w-20 lg:w-64 h-screen bg-zinc-950 border-r border-zinc-800 flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 z-50 transition-all duration-300">
             <div className="flex items-center gap-3 mb-12 px-2">
@@ -18,18 +18,22 @@ export const Sidebar = ({ currentPage, onNavigate }) => {
                     active={currentPage === 'overview' || currentPage === 'detail'}
                     onClick={() => onNavigate?.('overview')}
                 />
-                <NavItem
-                    icon={<Server size={20} />}
-                    label="Resources"
-                    active={currentPage === 'resources'}
-                    onClick={() => onNavigate?.('resources')}
-                />
-                <NavItem
-                    icon={<Shield size={20} />}
-                    label="Security"
-                    active={currentPage === 'security'}
-                    onClick={() => onNavigate?.('security')}
-                />
+                {showSystemLinks && (
+                    <>
+                        <NavItem
+                            icon={<Server size={20} />}
+                            label="Resources"
+                            active={currentPage === 'resources'}
+                            onClick={() => onNavigate?.('resources')}
+                        />
+                        <NavItem
+                            icon={<Shield size={20} />}
+                            label="Security"
+                            active={currentPage === 'security'}
+                            onClick={() => onNavigate?.('security')}
+                        />
+                    </>
+                )}
                 <NavItem
                     icon={<Settings size={20} />}
                     label="Settings"

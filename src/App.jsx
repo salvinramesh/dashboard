@@ -45,7 +45,7 @@ function App() {
       ) : currentView === 'security' ? (
         <Security system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'settings' ? (
-        <Settings onBack={() => setCurrentView('overview')} onNavigate={handleNavigate} currentPage={currentView} />
+        <Settings onBack={() => setCurrentView('overview')} onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : null}
     </ErrorBoundary>
   );
