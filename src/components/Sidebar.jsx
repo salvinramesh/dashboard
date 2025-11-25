@@ -4,11 +4,13 @@ import { LayoutDashboard, Server, Settings, Activity, Shield, Users } from 'luci
 export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
         <div className="w-20 lg:w-64 h-screen bg-zinc-950 border-r border-zinc-800 flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 z-50 transition-all duration-300">
-            <div className="flex items-center gap-3 mb-12 px-2">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <Activity className="text-white" size={24} />
+            <div className="flex flex-col items-center gap-3 mb-12 px-2">
+                <img src="/logo.png" alt="Logo" className="w-16 h-16 lg:w-28 lg:h-28 object-contain" />
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-[length:200%_auto] bg-clip-text text-transparent animate-shine text-center hidden lg:block tracking-widest uppercase">
+                        Advanced System Monitor
+                    </span>
                 </div>
-                <span className="text-xl font-bold text-white hidden lg:block tracking-tight">SysMon</span>
             </div>
 
             <nav className="flex flex-col gap-2 w-full">
