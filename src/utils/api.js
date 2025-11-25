@@ -6,7 +6,7 @@ export const systemsAPI = {
     // Get all systems
     getAll: async () => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
         try {
             console.log('Fetching systems from:', API_BASE);
@@ -30,7 +30,7 @@ export const systemsAPI = {
     // Get system resources (processes, docker)
     getResources: async (apiUrl) => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         try {
             const response = await fetch(`${apiUrl}/api/resources`, { signal: controller.signal });
             clearTimeout(timeoutId);
@@ -45,7 +45,7 @@ export const systemsAPI = {
     // Get system security info (connections, users)
     getSecurity: async (apiUrl) => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         try {
             const response = await fetch(`${apiUrl}/api/security`, { signal: controller.signal });
             clearTimeout(timeoutId);

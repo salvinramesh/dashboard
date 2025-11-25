@@ -11,7 +11,7 @@ export const SystemTile = ({ system, onClick }) => {
         const checkStatus = async () => {
             try {
                 const response = await fetch(`${system.apiUrl}/api/stats`, {
-                    signal: AbortSignal.timeout(3000)
+                    signal: AbortSignal.timeout(15000)
                 });
                 if (response.ok) {
                     const data = await response.json();
