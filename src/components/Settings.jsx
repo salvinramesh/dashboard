@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { colorThemes } from '../config/systems';
 import { systemsAPI, generateId } from '../utils/api';
-import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut } from 'lucide-react';
 
-export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = true }) => {
+export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = true, onLogout }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingSystem, setEditingSystem] = useState(null);
@@ -31,7 +31,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
             setSystems(data);
         } catch (error) {
             console.error('Failed to load systems:', error);
-            alert('Failed to load systems from database');
+            // alert('Failed to load systems from database');
         } finally {
             setLoading(false);
         }
@@ -171,15 +171,28 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                     <p className="text-zinc-500 text-sm mt-1">Manage your monitored systems</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={handleAddNew}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
-                            >
-                                <Plus size={20} />
-                                Add System
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleAddNew}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    <Plus size={20} />
+                                    Add System
+                                </button>
+                                {onLogout && (
+                                    <button
+                                        onClick={onLogout}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-xl font-medium transition-colors border border-red-600/20"
+                                    >
+                                        <LogOut size={20} />
+                                        Logout
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </header>
+
+
 
                     {/* Form Modal */}
                     {showForm && (

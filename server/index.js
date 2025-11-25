@@ -1,18 +1,17 @@
 const express = require('express');
 const si = require('systeminformation');
 const cors = require('cors');
-const systemsRouter = require('./routes/systems');
-
 const app = express();
 const PORT = 3001;
 
+// Middleware
 app.use((req, res, next) => {
     console.log(`[DEBUG] Incoming request: ${req.method} ${req.url}`);
     next();
 });
 
 app.use(cors());
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json());
 
 // Global request logger
 app.use((req, res, next) => {
@@ -21,8 +20,15 @@ app.use((req, res, next) => {
     next();
 });
 
-// Systems API routes
-app.use('/api/systems', systemsRouter);
+// Routes
+const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
+const systemsRouter = require('./routes/systems');
+const authenticateToken = require('./middleware/auth');
+
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/systems', authenticateToken, systemsRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -30,32 +36,23 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
-app.get('/api/stats', async (req, res) => {
+// Protected Stats Endpoints
+app.get('/api/stats', authenticateToken, async (req, res) => {
     try {
-        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize] = await Promise.all([
+        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize, uptime] = await Promise.all([
             si.currentLoad(),
             si.mem(),
             si.networkStats(),
             si.osInfo(),
             si.cpu(),
-            si.fsSize()
+            si.fsSize(),
+            si.time()
         ]);
-
-        // Calculate network speed (simplified for this demo)
-        // In a real app, we'd need to compare with previous sample
-        // For now, just sending total rx/tx which is cumulative
-        // But the frontend can calculate diff or we can do it here if we keep state.
-
-        // Let's keep it stateless for now and send the raw data.
-        // Actually, to show speed, we need rate.
-        // systeminformation's networkStats returns rx_sec and tx_sec if available?
-        // Let's check docs or just assume we send raw and frontend handles it or we use a different call.
-        // si.networkStats() returns rx_sec which is bytes per second if supported.
 
         res.json({
             cpu: {
                 load: cpu.currentLoad,
-                cores: cpuInfo.cores, // or physicalCores
+                cores: cpuInfo.cores,
                 brand: cpuInfo.brand
             },
             mem: {
@@ -64,7 +61,7 @@ app.get('/api/stats', async (req, res) => {
                 active: mem.active,
                 available: mem.available
             },
-            disk: fsSize, // Array of filesystems
+            disk: fsSize,
             network: networkStats.map(iface => ({
                 iface: iface.iface,
                 rx_sec: iface.rx_sec,
@@ -78,7 +75,7 @@ app.get('/api/stats', async (req, res) => {
                 release: osInfo.release,
                 hostname: osInfo.hostname
             },
-            uptime: si.time().uptime
+            uptime: uptime.uptime
         });
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -86,8 +83,7 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// GET /api/resources - Get processes and docker info
-app.get('/api/resources', async (req, res) => {
+app.get('/api/resources', authenticateToken, async (req, res) => {
     try {
         const [processes, docker] = await Promise.all([
             si.processes(),
@@ -95,7 +91,7 @@ app.get('/api/resources', async (req, res) => {
         ]);
 
         res.json({
-            processes: processes.list.slice(0, 20), // Top 20 processes
+            processes: processes.list.slice(0, 20),
             docker: docker
         });
     } catch (error) {
@@ -104,8 +100,7 @@ app.get('/api/resources', async (req, res) => {
     }
 });
 
-// GET /api/security - Get network connections and users
-app.get('/api/security', async (req, res) => {
+app.get('/api/security', authenticateToken, async (req, res) => {
     try {
         const [connections, users] = await Promise.all([
             si.networkConnections(),
@@ -122,16 +117,12 @@ app.get('/api/security', async (req, res) => {
     }
 });
 
+// Webhook & Monitoring
 const { sendAlert } = require('./webhook');
 const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
 
-// Alert state
-let lastAlertTime = {
-    memory: 0,
-    disk: 0
-};
+let lastAlertTime = { memory: 0, disk: 0 };
 
-// Monitoring loop
 const monitorSystem = async () => {
     try {
         const [mem, fsSize] = await Promise.all([
@@ -160,22 +151,20 @@ const monitorSystem = async () => {
                     console.log(msg);
                     sendAlert(msg).catch(console.error);
                     lastAlertTime.disk = now;
-                    break; // Alert once per cycle for disk to avoid spam if multiple partitions full
+                    break;
                 }
             }
         }
-
     } catch (error) {
         console.error('Error in monitoring loop:', error);
     }
 };
 
-// Start monitoring
 setInterval(monitorSystem, MONITOR_INTERVAL);
 
 // System Availability Monitoring
 const pool = require('./db');
-let systemStatus = {}; // { id: { isOnline: true, lastCheck: 0 } }
+let systemStatus = {};
 
 const checkSystemsAvailability = async () => {
     try {
@@ -184,9 +173,8 @@ const checkSystemsAvailability = async () => {
 
         for (const system of systems) {
             try {
-                // Use fetch with timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for slower systems
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
 
                 const response = await fetch(system.api_url + '/api/stats', {
                     signal: controller.signal
@@ -222,6 +210,7 @@ setInterval(checkSystemsAvailability, MONITOR_INTERVAL);
 // Send startup alert
 sendAlert('✅ *Server Started*: Primary Server is now online.').catch(console.error);
 
+// Graceful Shutdown
 const handleShutdown = async (signal) => {
     console.log(`Received ${signal}. Shutting down...`);
     try {

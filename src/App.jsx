@@ -1,14 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { SystemsOverview } from './components/SystemsOverview';
 import { Settings } from './components/Settings';
 import { Resources } from './components/Resources';
 import { Security } from './components/Security';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import Login from './components/Login';
+import UserManagement from './components/UserManagement';
 
 function App() {
+  const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('overview'); // 'overview', 'detail', 'settings'
   const [selectedSystem, setSelectedSystem] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    if (token && savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setCurrentView('overview');
+    setSelectedSystem(null);
+  };
 
   const handleSelectSystem = (system) => {
     setSelectedSystem(system);
@@ -21,18 +44,15 @@ function App() {
   };
 
   const handleNavigate = (page) => {
-    if ((page === 'resources' || page === 'security') && !selectedSystem) {
-      // If trying to access system-specific pages without a system selected,
-      // default to the first available system or show a selector (for now, just warn or stay on overview)
-      // Better UX: Redirect to overview with a message "Select a system first"
-      // For this implementation, we'll assume the user navigates from a system context or we pick the first one.
-      // Actually, let's just let them navigate but the components handle "no system" state.
-    }
     setCurrentView(page);
     if (page === 'overview') {
       setSelectedSystem(null);
     }
   };
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <ErrorBoundary>
@@ -44,8 +64,16 @@ function App() {
         <Resources system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'security' ? (
         <Security system={selectedSystem} onNavigate={handleNavigate} />
+      ) : currentView === 'users' ? (
+        <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : currentView === 'settings' ? (
-        <Settings onBack={() => setCurrentView('overview')} onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
+        <Settings
+          onBack={() => setCurrentView('overview')}
+          onNavigate={handleNavigate}
+          currentPage={currentView}
+          showSystemLinks={!!selectedSystem}
+          onLogout={handleLogout}
+        />
       ) : null}
     </ErrorBoundary>
   );
