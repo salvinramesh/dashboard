@@ -36,10 +36,39 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
+// WAN IP Caching
+let cachedWanIp = null;
+let lastWanIpCheck = 0;
+const WAN_IP_CACHE_DURATION = 3600000; // 1 hour
+
+const getPublicIp = async () => {
+    const now = Date.now();
+    if (cachedWanIp && (now - lastWanIpCheck < WAN_IP_CACHE_DURATION)) {
+        return cachedWanIp;
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            cachedWanIp = data.ip;
+            lastWanIpCheck = now;
+            return cachedWanIp;
+        }
+    } catch (error) {
+        console.error('Failed to fetch WAN IP:', error.message);
+    }
+    return cachedWanIp || 'Unknown';
+};
+
 // Protected Stats Endpoints
 app.get('/api/stats', authenticateToken, async (req, res) => {
     try {
-        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize, uptime, networkInterfaces] = await Promise.all([
+        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize, uptime, networkInterfaces, wanIp] = await Promise.all([
             si.currentLoad(),
             si.mem(),
             si.networkStats(),
@@ -47,7 +76,8 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
             si.cpu(),
             si.fsSize(),
             si.time(),
-            si.networkInterfaces()
+            si.networkInterfaces(),
+            getPublicIp()
         ]);
 
         res.json({
@@ -71,6 +101,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
                 tx_bytes: iface.tx_bytes
             })),
             interfaces: networkInterfaces,
+            wanIp: wanIp,
             os: {
                 platform: osInfo.platform,
                 distro: osInfo.distro,

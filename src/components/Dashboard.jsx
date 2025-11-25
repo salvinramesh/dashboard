@@ -3,7 +3,7 @@ import { useSystemStats } from '../hooks/useSystemStats';
 import { MetricCard } from './MetricCard';
 import { Sidebar } from './Sidebar';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Cpu, Network, Zap, Clock, Box, Server } from 'lucide-react';
+import { Cpu, Network, Zap, Clock, Box, Server, Globe } from 'lucide-react';
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -104,6 +104,12 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                                             {iface.iface}: {iface.ip4}
                                         </span>
                                     ))}
+                                {stats.wanIp && (
+                                    <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full border border-purple-500/20">
+                                        <Globe size={14} />
+                                        WAN: {stats.wanIp}
+                                    </span>
+                                )}
                             </div>
                         </div>
 
