@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { sendAlert } = require('./webhook');
-const { MONITOR_INTERVAL, JWT_SECRET } = require('./config');
+const { MONITOR_INTERVAL, JWT_SECRET, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
 
 let systemStatus = {};
+let lastAlertTimes = {}; // Map of systemId -> { memory: timestamp, disk: timestamp }
 
 const getSystemStatus = (id) => {
     return systemStatus[id];
@@ -20,6 +21,11 @@ const startMonitoring = (pool) => {
             const token = getMonitorToken();
 
             for (const system of systems) {
+                // Initialize alert tracking for new systems
+                if (!lastAlertTimes[system.id]) {
+                    lastAlertTimes[system.id] = { memory: 0, disk: 0 };
+                }
+
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -34,6 +40,37 @@ const startMonitoring = (pool) => {
 
                     if (response.ok) {
                         const stats = await response.json();
+
+                        // Check Resource Usage
+                        const now = Date.now();
+
+                        // 1. Memory Check
+                        if (stats.mem) {
+                            const memUsagePercent = (stats.mem.active / stats.mem.total) * 100;
+                            if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
+                                if (now - lastAlertTimes[system.id].memory > ALERT_COOLDOWN) {
+                                    const msg = `🚨 *High Memory Usage Alert* on ${system.name}\nUsage: ${memUsagePercent.toFixed(1)}%`;
+                                    console.log(msg);
+                                    sendAlert(msg).catch(console.error);
+                                    lastAlertTimes[system.id].memory = now;
+                                }
+                            }
+                        }
+
+                        // 2. Disk Check
+                        if (stats.disk && Array.isArray(stats.disk)) {
+                            for (const disk of stats.disk) {
+                                if (disk.use > DISK_THRESHOLD_PERCENT) {
+                                    if (now - lastAlertTimes[system.id].disk > ALERT_COOLDOWN) {
+                                        const msg = `🚨 *High Disk Usage Alert* on ${system.name}\nMount: ${disk.mount}\nUsage: ${disk.use}%`;
+                                        console.log(msg);
+                                        sendAlert(msg).catch(console.error);
+                                        lastAlertTimes[system.id].disk = now;
+                                        break; // Alert once per system per cooldown to avoid spam
+                                    }
+                                }
+                            }
+                        }
 
                         if (systemStatus[system.id] && !systemStatus[system.id].isOnline) {
                             const msg = `✅ *System Recovered*: ${system.name} is back online.`;
