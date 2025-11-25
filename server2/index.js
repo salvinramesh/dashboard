@@ -56,6 +56,77 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
+const { sendAlert } = require('./webhook');
+const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
+
+// Alert state
+let lastAlertTime = {
+    memory: 0,
+    disk: 0
+};
+
+// Monitoring loop
+const monitorSystem = async () => {
+    try {
+        const [mem, fsSize] = await Promise.all([
+            si.mem(),
+            si.fsSize() // Note: fsSize might require elevated privileges on some systems
+        ]);
+
+        // Check Memory
+        const memUsagePercent = (mem.active / mem.total) * 100;
+        if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
+            const now = Date.now();
+            if (now - lastAlertTime.memory > ALERT_COOLDOWN) {
+                const msg = `🚨 *High Memory Usage Alert* on Secondary Server\nUsage: ${memUsagePercent.toFixed(1)}%`;
+                console.log(msg);
+                sendAlert(msg).catch(console.error);
+                lastAlertTime.memory = now;
+            }
+        }
+
+        // Check Disk
+        // Note: fsSize() can be slow or fail without permission. 
+        // If it fails, we catch the error.
+        if (fsSize && fsSize.length > 0) {
+            for (const disk of fsSize) {
+                if (disk.use > DISK_THRESHOLD_PERCENT) {
+                    const now = Date.now();
+                    if (now - lastAlertTime.disk > ALERT_COOLDOWN) {
+                        const msg = `🚨 *High Disk Usage Alert* on Secondary Server\nMount: ${disk.mount}\nUsage: ${disk.use}%`;
+                        console.log(msg);
+                        sendAlert(msg).catch(console.error);
+                        lastAlertTime.disk = now;
+                        break;
+                    }
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('Error in monitoring loop:', error);
+    }
+};
+
+// Start monitoring
+setInterval(monitorSystem, MONITOR_INTERVAL);
+
+// Send startup alert
+sendAlert('✅ *Server Started*: Secondary Server is now online.').catch(console.error);
+
+const handleShutdown = async (signal) => {
+    console.log(`Received ${signal}. Shutting down...`);
+    try {
+        await sendAlert(`🛑 *Server Stopping*: Secondary Server is going offline (${signal}).`);
+    } catch (err) {
+        console.error('Failed to send offline alert:', err);
+    }
+    process.exit(0);
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

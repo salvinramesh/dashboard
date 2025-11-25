@@ -6,6 +6,11 @@ const systemsRouter = require('./routes/systems');
 const app = express();
 const PORT = 3001;
 
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Incoming request: ${req.method} ${req.url}`);
+    next();
+});
+
 app.use(cors());
 app.use(express.json()); // Parse JSON request bodies
 
@@ -116,6 +121,119 @@ app.get('/api/security', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch security info' });
     }
 });
+
+const { sendAlert } = require('./webhook');
+const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
+
+// Alert state
+let lastAlertTime = {
+    memory: 0,
+    disk: 0
+};
+
+// Monitoring loop
+const monitorSystem = async () => {
+    try {
+        const [mem, fsSize] = await Promise.all([
+            si.mem(),
+            si.fsSize()
+        ]);
+
+        // Check Memory
+        const memUsagePercent = (mem.active / mem.total) * 100;
+        if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
+            const now = Date.now();
+            if (now - lastAlertTime.memory > ALERT_COOLDOWN) {
+                const msg = `🚨 *High Memory Usage Alert* on Primary Server\nUsage: ${memUsagePercent.toFixed(1)}%`;
+                console.log(msg);
+                sendAlert(msg).catch(console.error);
+                lastAlertTime.memory = now;
+            }
+        }
+
+        // Check Disk
+        for (const disk of fsSize) {
+            if (disk.use > DISK_THRESHOLD_PERCENT) {
+                const now = Date.now();
+                if (now - lastAlertTime.disk > ALERT_COOLDOWN) {
+                    const msg = `🚨 *High Disk Usage Alert* on Primary Server\nMount: ${disk.mount}\nUsage: ${disk.use}%`;
+                    console.log(msg);
+                    sendAlert(msg).catch(console.error);
+                    lastAlertTime.disk = now;
+                    break; // Alert once per cycle for disk to avoid spam if multiple partitions full
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('Error in monitoring loop:', error);
+    }
+};
+
+// Start monitoring
+setInterval(monitorSystem, MONITOR_INTERVAL);
+
+// System Availability Monitoring
+const pool = require('./db');
+let systemStatus = {}; // { id: { isOnline: true, lastCheck: 0 } }
+
+const checkSystemsAvailability = async () => {
+    try {
+        const res = await pool.query('SELECT * FROM systems');
+        const systems = res.rows;
+
+        for (const system of systems) {
+            try {
+                // Use fetch with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for slower systems
+
+                const response = await fetch(system.api_url + '/api/stats', {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    if (systemStatus[system.id] && !systemStatus[system.id].isOnline) {
+                        const msg = `✅ *System Recovered*: ${system.name} is back online.`;
+                        console.log(msg);
+                        sendAlert(msg).catch(console.error);
+                    }
+                    systemStatus[system.id] = { isOnline: true, lastCheck: Date.now() };
+                } else {
+                    throw new Error('Status ' + response.status);
+                }
+            } catch (err) {
+                if (!systemStatus[system.id] || systemStatus[system.id].isOnline) {
+                    const msg = `🛑 *System Offline*: ${system.name} is unreachable. Error: ${err.message}`;
+                    console.log(msg);
+                    sendAlert(msg).catch(console.error);
+                }
+                systemStatus[system.id] = { isOnline: false, lastCheck: Date.now() };
+            }
+        }
+    } catch (err) {
+        console.error('Monitoring error:', err);
+    }
+};
+
+setInterval(checkSystemsAvailability, MONITOR_INTERVAL);
+
+// Send startup alert
+sendAlert('✅ *Server Started*: Primary Server is now online.').catch(console.error);
+
+const handleShutdown = async (signal) => {
+    console.log(`Received ${signal}. Shutting down...`);
+    try {
+        await sendAlert(`🛑 *Server Stopping*: Primary Server is going offline (${signal}).`);
+    } catch (err) {
+        console.error('Failed to send offline alert:', err);
+    }
+    process.exit(0);
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
