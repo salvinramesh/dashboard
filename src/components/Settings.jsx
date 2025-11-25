@@ -61,7 +61,10 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
     };
 
     const handleEdit = (system) => {
-        setFormData(system);
+        setFormData({
+            ...system,
+            apiUrl: system.api_url || system.apiUrl
+        });
         setEditingSystem(system.id);
         setShowForm(true);
     };
@@ -200,102 +203,104 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
 
                     {/* Form Modal */}
                     {showForm && (
-                        <div className="mb-8 bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6">
-                            <h2 className="text-2xl font-bold text-white mb-6">
-                                {editingSystem ? 'Edit System' : 'Add New System'}
-                            </h2>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-400 mb-2">System Name *</label>
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleInputChange}
-                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                            placeholder="e.g., Production Server"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-400 mb-2">API URL *</label>
-                                        <input
-                                            type="url"
-                                            name="apiUrl"
-                                            value={formData.apiUrl}
-                                            onChange={handleInputChange}
-                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
-                                            placeholder="http://192.168.1.100:3001"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Description</label>
-                                    <input
-                                        type="text"
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                        placeholder="e.g., Main production server"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-400 mb-2">Color Theme</label>
-                                        <select
-                                            name="color"
-                                            value={formData.color}
-                                            onChange={handleInputChange}
-                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                        >
-                                            {colorOptions.map(color => (
-                                                <option key={color} value={color} className="capitalize">
-                                                    {color}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-400 mb-2">Icon</label>
-                                        <div className="grid grid-cols-10 gap-2">
-                                            {iconOptions.map(icon => (
-                                                <button
-                                                    key={icon}
-                                                    type="button"
-                                                    onClick={() => setFormData(prev => ({ ...prev, icon }))}
-                                                    className={`
-                                                        w-10 h-10 rounded-lg flex items-center justify-center text-2xl
-                                                        ${formData.icon === icon ? 'bg-blue-600' : 'bg-zinc-900 hover:bg-zinc-800'}
-                                                        transition-colors
-                                                    `}
-                                                >
-                                                    {icon}
-                                                </button>
-                                            ))}
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+                                <h2 className="text-2xl font-bold text-white mb-6">
+                                    {editingSystem ? 'Edit System' : 'Add New System'}
+                                </h2>
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">System Name *</label>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                                placeholder="e.g., Production Server"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">API URL *</label>
+                                            <input
+                                                type="url"
+                                                name="apiUrl"
+                                                value={formData.apiUrl}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+                                                placeholder="http://192.168.1.100:3001"
+                                                required
+                                            />
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-3 pt-4">
-                                    <button
-                                        type="submit"
-                                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
-                                    >
-                                        <Save size={18} />
-                                        {editingSystem ? 'Update System' : 'Add System'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCancel}
-                                        className="flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
-                                    >
-                                        <X size={18} />
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
+                                    <div>
+                                        <label className="block text-sm font-medium text-zinc-400 mb-2">Description</label>
+                                        <input
+                                            type="text"
+                                            name="description"
+                                            value={formData.description}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            placeholder="e.g., Main production server"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">Color Theme</label>
+                                            <select
+                                                name="color"
+                                                value={formData.color}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            >
+                                                {colorOptions.map(color => (
+                                                    <option key={color} value={color} className="capitalize">
+                                                        {color}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">Icon</label>
+                                            <div className="grid grid-cols-10 gap-2">
+                                                {iconOptions.map(icon => (
+                                                    <button
+                                                        key={icon}
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({ ...prev, icon }))}
+                                                        className={`
+                                                            w-10 h-10 rounded-lg flex items-center justify-center text-2xl
+                                                            ${formData.icon === icon ? 'bg-blue-600' : 'bg-zinc-900 hover:bg-zinc-800'}
+                                                            transition-colors
+                                                        `}
+                                                    >
+                                                        {icon}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 pt-4 justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleCancel}
+                                            className="flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
+                                        >
+                                            <X size={18} />
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                                        >
+                                            <Save size={18} />
+                                            {editingSystem ? 'Update System' : 'Add System'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     )}
 
