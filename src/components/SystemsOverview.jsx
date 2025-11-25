@@ -17,14 +17,14 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
     );
 
     useEffect(() => {
-        loadSystems();
-        const interval = setInterval(loadSystems, 5000);
+        loadSystems(true);
+        const interval = setInterval(() => loadSystems(false), 5000);
         return () => clearInterval(interval);
     }, []);
 
-    const loadSystems = async () => {
+    const loadSystems = async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             setError(null);
             const data = await systemsAPI.getAll();
             setSystems(data);
@@ -32,7 +32,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
             console.error('Failed to load systems:', error);
             setError(error.message);
         } finally {
-            if (loading) setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
