@@ -153,8 +153,10 @@ app.get('/api/security', authenticateToken, async (req, res) => {
 // Webhook & Monitoring
 const { sendAlert } = require('./webhook');
 const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
+const os = require('os');
 
 let lastAlertTime = { memory: 0, disk: 0 };
+const SERVER_NAME = os.hostname();
 
 const monitorSystem = async () => {
     try {
@@ -168,7 +170,7 @@ const monitorSystem = async () => {
         if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
             const now = Date.now();
             if (now - lastAlertTime.memory > ALERT_COOLDOWN) {
-                const msg = `🚨 *High Memory Usage Alert* on Primary Server\nUsage: ${memUsagePercent.toFixed(1)}%`;
+                const msg = `🚨 *High Memory Usage Alert* on ${SERVER_NAME}\nUsage: ${memUsagePercent.toFixed(1)}%`;
                 console.log(msg);
                 sendAlert(msg).catch(console.error);
                 lastAlertTime.memory = now;
@@ -180,7 +182,7 @@ const monitorSystem = async () => {
             if (disk.use > DISK_THRESHOLD_PERCENT) {
                 const now = Date.now();
                 if (now - lastAlertTime.disk > ALERT_COOLDOWN) {
-                    const msg = `🚨 *High Disk Usage Alert* on Primary Server\nMount: ${disk.mount}\nUsage: ${disk.use}%`;
+                    const msg = `🚨 *High Disk Usage Alert* on ${SERVER_NAME}\nMount: ${disk.mount}\nUsage: ${disk.use}%`;
                     console.log(msg);
                     sendAlert(msg).catch(console.error);
                     lastAlertTime.disk = now;
@@ -203,13 +205,13 @@ const monitor = require('./monitor');
 monitor.startMonitoring(pool);
 
 // Send startup alert
-sendAlert('✅ *Server Started*: Primary Server is now online.').catch(console.error);
+sendAlert(`✅ *Server Started*: ${SERVER_NAME} is now online.`).catch(console.error);
 
 // Graceful Shutdown
 const handleShutdown = async (signal) => {
     console.log(`Received ${signal}. Shutting down...`);
     try {
-        await sendAlert(`🛑 *Server Stopping*: Primary Server is going offline (${signal}).`);
+        await sendAlert(`🛑 *Server Stopping*: ${SERVER_NAME} is going offline (${signal}).`);
     } catch (err) {
         console.error('Failed to send offline alert:', err);
     }
