@@ -19,6 +19,8 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         icon: '🖥️'
     });
 
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
     // Fetch systems on mount
     useEffect(() => {
         loadSystems();
@@ -172,13 +174,15 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                 </div>
                             </div>
                             <div className="flex gap-3">
-                                <button
-                                    onClick={handleAddNew}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
-                                >
-                                    <Plus size={20} />
-                                    Add System
-                                </button>
+                                {currentUser.role === 'admin' && (
+                                    <button
+                                        onClick={handleAddNew}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                                    >
+                                        <Plus size={20} />
+                                        Add System
+                                    </button>
+                                )}
                                 {onLogout && (
                                     <button
                                         onClick={onLogout}
@@ -313,24 +317,26 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                         <p className="text-xs text-zinc-600 font-mono mt-1">{system.apiUrl}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleEdit(system)}
-                                        className="p-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg transition-colors"
-                                        title="Edit"
-                                    >
-                                        <Edit2 size={18} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => handleDeleteClick(system.id, e)}
-                                        className="p-2 bg-zinc-800 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
+                                {currentUser.role === 'admin' && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleEdit(system)}
+                                            className="p-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteClick(system.id, e)}
+                                            className="p-2 bg-zinc-800 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

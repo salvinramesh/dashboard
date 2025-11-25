@@ -4,7 +4,8 @@ import { Users, Trash2, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     const [users, setUsers] = useState([]);
-    const [newUser, setNewUser] = useState({ username: '', password: '' });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'std' });
+    const [editingId, setEditingId] = useState(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
@@ -30,36 +31,58 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
         fetchUsers();
     }, []);
 
-    const handleCreateUser = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
         setLoading(true);
 
         try {
-            const response = await fetch('/api/users', {
-                method: 'POST',
+            const url = editingId ? `/api/users/${editingId}` : '/api/users';
+            const method = editingId ? 'PUT' : 'POST';
+
+            const body = { ...formData };
+            if (!body.password && editingId) delete body.password; // Don't send empty password on edit
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(newUser)
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to create user');
+                throw new Error(data.error || `Failed to ${editingId ? 'update' : 'create'} user`);
             }
 
-            setSuccess(`User ${data.username} created successfully`);
-            setNewUser({ username: '', password: '' });
+            setSuccess(`User ${data.username} ${editingId ? 'updated' : 'created'} successfully`);
+            setFormData({ username: '', password: '', role: 'std' });
+            setEditingId(null);
             fetchUsers();
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const startEdit = (user) => {
+        setFormData({ username: user.username, password: '', role: user.role || 'std' });
+        setEditingId(user.id);
+        setError('');
+        setSuccess('');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setFormData({ username: '', password: '', role: 'std' });
+        setEditingId(null);
+        setError('');
+        setSuccess('');
     };
 
     const handleDeleteUser = async (id) => {
@@ -101,59 +124,85 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                         </div>
                     </header>
 
-                    {/* Create User Form */}
-                    <div className="mb-12 bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <Plus size={20} className="text-blue-400" />
-                            Add New User
-                        </h2>
+                    {/* Create/Edit User Form */}
+                    {currentUser.role === 'admin' && (
+                        <div className="mb-12 bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6">
+                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Plus size={20} className="text-blue-400" />
+                                {editingId ? 'Edit User' : 'Add New User'}
+                            </h2>
 
-                        {error && (
-                            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
-                                <AlertCircle size={20} />
-                                {error}
-                            </div>
-                        )}
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
+                                    <AlertCircle size={20} />
+                                    {error}
+                                </div>
+                            )}
 
-                        {success && (
-                            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3 text-green-400">
-                                <CheckCircle2 size={20} />
-                                {success}
-                            </div>
-                        )}
+                            {success && (
+                                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3 text-green-400">
+                                    <CheckCircle2 size={20} />
+                                    {success}
+                                </div>
+                            )}
 
-                        <form onSubmit={handleCreateUser} className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1 w-full">
-                                <label className="block text-sm font-medium text-zinc-400 mb-2">Username</label>
-                                <input
-                                    type="text"
-                                    value={newUser.username}
-                                    onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                    placeholder="Enter username"
-                                    required
-                                />
-                            </div>
-                            <div className="flex-1 w-full">
-                                <label className="block text-sm font-medium text-zinc-400 mb-2">Password</label>
-                                <input
-                                    type="password"
-                                    value={newUser.password}
-                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                    placeholder="Enter password"
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full md:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {loading ? 'Adding...' : 'Add User'}
-                            </button>
-                        </form>
-                    </div>
+                            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+                                <div className="flex-1 w-full">
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Username</label>
+                                    <input
+                                        type="text"
+                                        value={formData.username}
+                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                        placeholder="Enter username"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex-1 w-full">
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
+                                        {editingId ? 'New Password (leave blank to keep)' : 'Password'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                        placeholder={editingId ? "Enter new password" : "Enter password"}
+                                        required={!editingId}
+                                    />
+                                </div>
+                                <div className="w-full md:w-48">
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Role</label>
+                                    <select
+                                        value={formData.role}
+                                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                    >
+                                        <option value="std">Standard</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    {editingId && (
+                                        <button
+                                            type="button"
+                                            onClick={cancelEdit}
+                                            className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="flex-1 md:flex-none px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        {loading ? (editingId ? 'Updating...' : 'Adding...') : (editingId ? 'Update User' : 'Add User')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
 
                     {/* Users List */}
                     <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-3xl overflow-hidden">
@@ -165,8 +214,9 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                                 <thead className="bg-zinc-900/50 text-zinc-400 text-sm uppercase tracking-wider">
                                     <tr>
                                         <th className="px-6 py-4 font-medium">Username</th>
+                                        <th className="px-6 py-4 font-medium">Role</th>
                                         <th className="px-6 py-4 font-medium">Created At</th>
-                                        <th className="px-6 py-4 font-medium text-right">Actions</th>
+                                        {currentUser.role === 'admin' && <th className="px-6 py-4 font-medium text-right">Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-800">
@@ -182,20 +232,34 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                                                     )}
                                                 </div>
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${user.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
+                                                    {user.role === 'admin' ? 'Admin' : 'Standard'}
+                                                </span>
+                                            </td>
                                             <td className="px-6 py-4 text-zinc-400">
                                                 {new Date(user.created_at).toLocaleDateString()}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {user.id !== currentUser.id && (
+                                            {currentUser.role === 'admin' && (
+                                                <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                     <button
-                                                        onClick={() => handleDeleteUser(user.id)}
-                                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                        title="Delete User"
+                                                        onClick={() => startEdit(user)}
+                                                        className="p-2 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                        title="Edit User"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Users size={18} />
                                                     </button>
-                                                )}
-                                            </td>
+                                                    {user.id !== currentUser.id && (
+                                                        <button
+                                                            onClick={() => handleDeleteUser(user.id)}
+                                                            className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                            title="Delete User"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                     {users.length === 0 && (

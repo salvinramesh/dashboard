@@ -10,7 +10,7 @@ router.use(authenticateToken);
 // GET /api/users - List all users
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, username, created_at FROM users ORDER BY created_at DESC');
+        const result = await pool.query('SELECT id, username, role, created_at FROM users ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -20,17 +20,25 @@ router.get('/', async (req, res) => {
 
 // POST /api/users - Create new user
 router.post('/', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    // Only admins can create users (enforced by UI, but good to check here too if we want strictness)
+    // For now, allowing any authenticated user to create (as per previous logic), but we will enforce admin-only in frontend.
+    // Actually, let's enforce it here:
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can create users' });
+    }
+
     try {
         const passwordHash = await bcrypt.hash(password, 10);
+        const userRole = role || 'std';
         const result = await pool.query(
-            'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at',
-            [username, passwordHash]
+            'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role, created_at',
+            [username, passwordHash, userRole]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -45,6 +53,10 @@ router.post('/', async (req, res) => {
 // DELETE /api/users/:id - Delete user
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can delete users' });
+    }
 
     // Prevent deleting self
     if (id === req.user.id) {

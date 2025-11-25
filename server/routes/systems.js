@@ -64,6 +64,9 @@ router.get('/:id', async (req, res) => {
 // POST /api/systems - Create new system
 router.post('/', async (req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can create systems' });
+        }
         const { id, name, description, apiUrl, color, icon } = req.body;
 
         // Validation
@@ -89,6 +92,9 @@ router.post('/', async (req, res) => {
 // PUT /api/systems/:id - Update system
 router.put('/:id', async (req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can update systems' });
+        }
         const { id } = req.params;
         const { name, description, apiUrl, color, icon } = req.body;
 
@@ -119,6 +125,9 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/systems/:id - Delete system
 router.delete('/:id', async (req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can delete systems' });
+        }
         const { id } = req.params;
 
         const result = await pool.query(
