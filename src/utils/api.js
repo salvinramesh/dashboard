@@ -44,27 +44,30 @@ export const systemsAPI = {
         return response.json();
     },
 
-    // Get system resources (processes, docker)
-    getResources: async (apiUrl) => {
+    // Get system stats (CPU, Mem, Network)
+    getStats: async (id) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
         try {
-            // Note: This call goes to the remote system directly? 
-            // If so, it might not need our auth token unless we proxy it through our backend.
-            // Based on previous code, it seems we might be calling the remote agent directly.
-            // BUT, the backend index.js has /api/resources protected.
-            // If apiUrl points to OUR backend (proxy), we need auth.
-            // If it points to remote agent, we might not.
-            // Given the architecture, let's assume we need to send auth if it's our backend.
-            // However, the systems have their own API URL.
-            // If the system.api_url is external, sending our token might be wrong.
-            // But wait, the previous implementation was `fetch(system.api_url + '/api/stats')`.
-            // If we are protecting OUR backend routes, we need to make sure we are calling OUR backend or the remote one.
-            // The `systemsAPI.getResources` takes `apiUrl`.
-            // If `apiUrl` is `http://localhost:3001`, we need auth.
+            const response = await fetch(`${API_BASE}/${id}/stats`, {
+                signal: controller.signal,
+                headers: getHeaders()
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error('Failed to fetch stats');
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    },
 
-            // Let's assume for now we just pass headers. If it's a remote agent that doesn't check auth, it might ignore it.
-            const response = await fetch(`${apiUrl}/api/resources`, {
+    // Get system resources (processes, docker)
+    getResources: async (id) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+            const response = await fetch(`${API_BASE}/${id}/resources`, {
                 signal: controller.signal,
                 headers: getHeaders()
             });
@@ -78,11 +81,11 @@ export const systemsAPI = {
     },
 
     // Get system security info (connections, users)
-    getSecurity: async (apiUrl) => {
+    getSecurity: async (id) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
         try {
-            const response = await fetch(`${apiUrl}/api/security`, {
+            const response = await fetch(`${API_BASE}/${id}/security`, {
                 signal: controller.signal,
                 headers: getHeaders()
             });

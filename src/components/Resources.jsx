@@ -18,7 +18,7 @@ export const Resources = ({ system, onNavigate }) => {
 
     const loadResources = async () => {
         try {
-            const result = await systemsAPI.getResources(system.apiUrl);
+            const result = await systemsAPI.getResources(system.id);
             setData(result);
             setError(null);
         } catch (err) {

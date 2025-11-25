@@ -39,14 +39,15 @@ app.use((err, req, res, next) => {
 // Protected Stats Endpoints
 app.get('/api/stats', authenticateToken, async (req, res) => {
     try {
-        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize, uptime] = await Promise.all([
+        const [cpu, mem, networkStats, osInfo, cpuInfo, fsSize, uptime, networkInterfaces] = await Promise.all([
             si.currentLoad(),
             si.mem(),
             si.networkStats(),
             si.osInfo(),
             si.cpu(),
             si.fsSize(),
-            si.time()
+            si.time(),
+            si.networkInterfaces()
         ]);
 
         res.json({
@@ -69,6 +70,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
                 rx_bytes: iface.rx_bytes,
                 tx_bytes: iface.tx_bytes
             })),
+            interfaces: networkInterfaces,
             os: {
                 platform: osInfo.platform,
                 distro: osInfo.distro,
@@ -164,48 +166,10 @@ setInterval(monitorSystem, MONITOR_INTERVAL);
 
 // System Availability Monitoring
 const pool = require('./db');
-let systemStatus = {};
+const monitor = require('./monitor');
 
-const checkSystemsAvailability = async () => {
-    try {
-        const res = await pool.query('SELECT * FROM systems');
-        const systems = res.rows;
-
-        for (const system of systems) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                const response = await fetch(system.api_url + '/api/stats', {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    if (systemStatus[system.id] && !systemStatus[system.id].isOnline) {
-                        const msg = `✅ *System Recovered*: ${system.name} is back online.`;
-                        console.log(msg);
-                        sendAlert(msg).catch(console.error);
-                    }
-                    systemStatus[system.id] = { isOnline: true, lastCheck: Date.now() };
-                } else {
-                    throw new Error('Status ' + response.status);
-                }
-            } catch (err) {
-                if (!systemStatus[system.id] || systemStatus[system.id].isOnline) {
-                    const msg = `🛑 *System Offline*: ${system.name} is unreachable. Error: ${err.message}`;
-                    console.log(msg);
-                    sendAlert(msg).catch(console.error);
-                }
-                systemStatus[system.id] = { isOnline: false, lastCheck: Date.now() };
-            }
-        }
-    } catch (err) {
-        console.error('Monitoring error:', err);
-    }
-};
-
-setInterval(checkSystemsAvailability, MONITOR_INTERVAL);
+// Start monitoring
+monitor.startMonitoring(pool);
 
 // Send startup alert
 sendAlert('✅ *Server Started*: Primary Server is now online.').catch(console.error);

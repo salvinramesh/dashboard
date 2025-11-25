@@ -10,5 +10,8 @@ module.exports = {
     MONITOR_INTERVAL: 10000,
 
     // Cooldown between alerts in milliseconds (e.g., 1 hour) to avoid spam
-    ALERT_COOLDOWN: 600000
+    ALERT_COOLDOWN: 600000,
+
+    // JWT Secret
+    JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 };

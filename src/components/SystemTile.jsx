@@ -1,34 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Server, Cpu, HardDrive, TrendingUp, AlertCircle } from 'lucide-react';
 import { colorThemes } from '../config/systems';
 
 export const SystemTile = ({ system, onClick }) => {
-    const [stats, setStats] = useState(null);
-    const [status, setStatus] = useState('checking'); // 'online', 'offline', 'checking'
+    const { status, stats } = system;
     const theme = colorThemes[system.color] || colorThemes.blue;
-
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const response = await fetch(`${system.apiUrl}/api/stats`, {
-                    signal: AbortSignal.timeout(15000)
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setStats(data);
-                    setStatus('online');
-                } else {
-                    setStatus('offline');
-                }
-            } catch (error) {
-                setStatus('offline');
-            }
-        };
-
-        checkStatus();
-        const interval = setInterval(checkStatus, 5000);
-        return () => clearInterval(interval);
-    }, [system.apiUrl]);
 
     return (
         <div

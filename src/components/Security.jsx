@@ -18,7 +18,7 @@ export const Security = ({ system, onNavigate }) => {
 
     const loadSecurity = async () => {
         try {
-            const result = await systemsAPI.getSecurity(system.apiUrl);
+            const result = await systemsAPI.getSecurity(system.id);
             setData(result);
             setError(null);
         } catch (err) {
@@ -99,8 +99,8 @@ export const Security = ({ system, onNavigate }) => {
                                                     <td className="p-4 font-mono text-zinc-500">{conn.peerAddress}:{conn.peerPort}</td>
                                                     <td className="p-4">
                                                         <span className={`px-2 py-1 rounded text-xs font-bold ${conn.state === 'LISTEN' ? 'bg-blue-500/10 text-blue-500' :
-                                                                conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
-                                                                    'bg-zinc-800 text-zinc-500'
+                                                            conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
+                                                                'bg-zinc-800 text-zinc-500'
                                                             }`}>
                                                             {conn.state}
                                                         </span>

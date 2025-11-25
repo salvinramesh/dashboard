@@ -24,7 +24,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export const Dashboard = ({ system, onBack, onNavigate }) => {
-    const { stats, history, loading, error } = useSystemStats(system?.apiUrl);
+    const { stats, history, loading, error } = useSystemStats(system?.id);
 
     if (loading) return (
         <div className="flex items-center justify-center h-screen bg-zinc-950 text-zinc-500 font-mono animate-pulse">
@@ -87,7 +87,7 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                             <h1 className="text-4xl font-bold text-white tracking-tight mb-2">
                                 {system?.name || 'Overview'}
                             </h1>
-                            <div className="flex items-center gap-3 text-zinc-500 text-sm font-medium">
+                            <div className="flex flex-wrap items-center gap-3 text-zinc-500 text-sm font-medium">
                                 <span className="flex items-center gap-1.5 bg-zinc-900/50 px-3 py-1 rounded-full border border-zinc-800/50">
                                     <Box size={14} />
                                     {stats.os.distro} {stats.os.release}
@@ -96,6 +96,14 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                                     <Server size={14} />
                                     {stats.os.hostname}
                                 </span>
+                                {stats.interfaces && stats.interfaces
+                                    .filter(iface => !iface.internal && iface.ip4)
+                                    .map((iface, i) => (
+                                        <span key={i} className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">
+                                            <Network size={14} />
+                                            {iface.iface}: {iface.ip4}
+                                        </span>
+                                    ))}
                             </div>
                         </div>
 

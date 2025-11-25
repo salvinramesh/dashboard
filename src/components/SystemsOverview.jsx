@@ -11,6 +11,8 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
 
     useEffect(() => {
         loadSystems();
+        const interval = setInterval(loadSystems, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     const loadSystems = async () => {
@@ -23,7 +25,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
             console.error('Failed to load systems:', error);
             setError(error.message);
         } finally {
-            setLoading(false);
+            if (loading) setLoading(false);
         }
     };
 

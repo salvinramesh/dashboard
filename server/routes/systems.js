@@ -1,16 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config');
+
+const { getSystemStatus } = require('../monitor');
+
+const getProxyToken = () => {
+    return jwt.sign({ username: 'proxy', role: 'system' }, JWT_SECRET, { expiresIn: '1m' });
+};
 
 // GET /api/systems - Get all systems
 router.get('/', async (req, res) => {
     console.log('GET /api/systems request received');
-    console.log('Headers:', req.headers);
     try {
         const result = await pool.query(
             'SELECT * FROM systems ORDER BY created_at ASC'
         );
-        res.json(result.rows);
+
+        const systems = result.rows.map(system => {
+            const status = getSystemStatus(system.id);
+            return {
+                ...system,
+                status: status?.isOnline ? 'online' : 'offline',
+                stats: status?.stats
+            };
+        });
+
+        res.json(systems);
     } catch (error) {
         console.error('Error fetching systems:', error);
         res.status(500).json({ error: 'Failed to fetch systems', details: error.message });
@@ -30,7 +47,14 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: 'System not found' });
         }
 
-        res.json(result.rows[0]);
+        const system = result.rows[0];
+        const status = getSystemStatus(system.id);
+
+        res.json({
+            ...system,
+            status: status?.isOnline ? 'online' : 'offline',
+            stats: status?.stats
+        });
     } catch (error) {
         console.error('Error fetching system:', error);
         res.status(500).json({ error: 'Failed to fetch system' });
@@ -110,6 +134,129 @@ router.delete('/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting system:', error);
         res.status(500).json({ error: 'Failed to delete system' });
+    }
+});
+
+// Proxy GET /api/systems/:id/resources
+router.get('/:id/resources', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/resources`, {
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error fetching resources from ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in resources proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy GET /api/systems/:id/security
+router.get('/:id/security', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const token = getProxyToken();
+
+        try {
+            // Note: The remote endpoint might be /api/security or similar depending on the agent implementation
+            // Based on previous context, the agent seems to expose /api/stats (resources) 
+            // We need to check if /api/security exists on the agent. 
+            // If not, we might need to implement it there too.
+            // For now, assuming the agent has it or we are proxying to what exists.
+            // Wait, looking at server/index.js (the agent), it has /api/security.
+            const response = await fetch(`${api_url}/api/security`, {
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error fetching security from ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in security proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy GET /api/systems/:id/stats
+router.get('/:id/stats', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/stats`, {
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error fetching stats from ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in stats proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

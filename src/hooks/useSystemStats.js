@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
+import { systemsAPI } from '../utils/api';
 
-export const useSystemStats = (apiUrl = 'http://localhost:3001') => {
+export const useSystemStats = (systemId) => {
     const [stats, setStats] = useState(null);
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        if (!systemId) return;
+
         const fetchStats = async () => {
             try {
-                const response = await fetch(`${apiUrl}/api/stats`);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
+                const data = await systemsAPI.getStats(systemId);
 
                 setStats(data);
                 setHistory(prev => {
@@ -34,7 +33,7 @@ export const useSystemStats = (apiUrl = 'http://localhost:3001') => {
         const interval = setInterval(fetchStats, 1000);
 
         return () => clearInterval(interval);
-    }, [apiUrl]);
+    }, [systemId]);
 
     return { stats, history, loading, error };
 };
