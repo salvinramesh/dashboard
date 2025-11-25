@@ -27,6 +27,36 @@ export const systemsAPI = {
         return response.json();
     },
 
+    // Get system resources (processes, docker)
+    getResources: async (apiUrl) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        try {
+            const response = await fetch(`${apiUrl}/api/resources`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error('Failed to fetch resources');
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    },
+
+    // Get system security info (connections, users)
+    getSecurity: async (apiUrl) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        try {
+            const response = await fetch(`${apiUrl}/api/security`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error('Failed to fetch security info');
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    },
+
     // Create new system
     create: async (system) => {
         const response = await fetch(API_BASE, {

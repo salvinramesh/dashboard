@@ -21,10 +21,14 @@ export const Sidebar = ({ currentPage, onNavigate }) => {
                 <NavItem
                     icon={<Server size={20} />}
                     label="Resources"
+                    active={currentPage === 'resources'}
+                    onClick={() => onNavigate?.('resources')}
                 />
                 <NavItem
                     icon={<Shield size={20} />}
                     label="Security"
+                    active={currentPage === 'security'}
+                    onClick={() => onNavigate?.('security')}
                 />
                 <NavItem
                     icon={<Settings size={20} />}

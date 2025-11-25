@@ -76,8 +76,44 @@ app.get('/api/stats', async (req, res) => {
             uptime: si.time().uptime
         });
     } catch (error) {
-        console.error(error);
+        console.error('Error fetching stats:', error);
         res.status(500).json({ error: 'Failed to fetch system stats' });
+    }
+});
+
+// GET /api/resources - Get processes and docker info
+app.get('/api/resources', async (req, res) => {
+    try {
+        const [processes, docker] = await Promise.all([
+            si.processes(),
+            si.dockerContainers()
+        ]);
+
+        res.json({
+            processes: processes.list.slice(0, 20), // Top 20 processes
+            docker: docker
+        });
+    } catch (error) {
+        console.error('Error fetching resources:', error);
+        res.status(500).json({ error: 'Failed to fetch resources' });
+    }
+});
+
+// GET /api/security - Get network connections and users
+app.get('/api/security', async (req, res) => {
+    try {
+        const [connections, users] = await Promise.all([
+            si.networkConnections(),
+            si.users()
+        ]);
+
+        res.json({
+            connections: connections.filter(c => c.state === 'LISTEN' || c.state === 'ESTABLISHED'),
+            users: users
+        });
+    } catch (error) {
+        console.error('Error fetching security info:', error);
+        res.status(500).json({ error: 'Failed to fetch security info' });
     }
 });
 
