@@ -67,7 +67,7 @@ router.post('/', async (req, res) => {
         if (req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can create systems' });
         }
-        const { id, name, description, apiUrl, color, icon } = req.body;
+        const { id, name, description, apiUrl, color, icon, notificationsEnabled } = req.body;
 
         // Validation
         if (!id || !name || !apiUrl) {
@@ -75,8 +75,8 @@ router.post('/', async (req, res) => {
         }
 
         const result = await pool.query(
-            'INSERT INTO systems (id, name, description, api_url, color, icon) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [id, name, description || '', apiUrl, color || 'blue', icon || '🖥️']
+            'INSERT INTO systems (id, name, description, api_url, color, icon, notifications_enabled) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [id, name, description || '', apiUrl, color || 'blue', icon || '🖥️', notificationsEnabled !== undefined ? notificationsEnabled : true]
         );
 
         res.status(201).json(result.rows[0]);
@@ -96,7 +96,7 @@ router.put('/:id', async (req, res) => {
             return res.status(403).json({ error: 'Only admins can update systems' });
         }
         const { id } = req.params;
-        const { name, description, apiUrl, color, icon } = req.body;
+        const { name, description, apiUrl, color, icon, notificationsEnabled } = req.body;
 
         const result = await pool.query(
             `UPDATE systems 
@@ -105,10 +105,11 @@ router.put('/:id', async (req, res) => {
                  api_url = COALESCE($3, api_url),
                  color = COALESCE($4, color),
                  icon = COALESCE($5, icon),
+                 notifications_enabled = COALESCE($6, notifications_enabled),
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $6
+             WHERE id = $7
              RETURNING *`,
-            [name, description, apiUrl, color, icon, id]
+            [name, description, apiUrl, color, icon, notificationsEnabled, id]
         );
 
         if (result.rows.length === 0) {

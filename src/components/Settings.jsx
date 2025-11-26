@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { colorThemes } from '../config/systems';
 import { systemsAPI, generateId } from '../utils/api';
-import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut, Bell, BellOff, Search } from 'lucide-react';
 
 export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = true, onLogout }) => {
     const [systems, setSystems] = useState([]);
@@ -10,6 +10,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
     const [editingSystem, setEditingSystem] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [formData, setFormData] = useState({
         id: '',
         name: '',
@@ -137,6 +138,19 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         } catch (error) {
             console.error('Failed to save system:', error);
             alert('Failed to save system: ' + error.message);
+        }
+    };
+
+    const handleToggleNotifications = async (system) => {
+        try {
+            await systemsAPI.update(system.id, {
+                ...system,
+                notificationsEnabled: !system.notifications_enabled
+            });
+            await loadSystems();
+        } catch (error) {
+            console.error('Failed to toggle notifications:', error);
+            alert('Failed to toggle notifications');
         }
     };
 
@@ -306,44 +320,73 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
 
                     {/* Systems List */}
                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-white mb-4">Configured Systems ({systems.length})</h2>
-                        {systems.map(system => (
-                            <div
-                                key={system.id}
-                                className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 flex items-center justify-between hover:border-zinc-700 transition-colors"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-14 h-14 ${colorThemes[system.color]?.light || 'bg-blue-500/10'} rounded-xl flex items-center justify-center text-3xl`}>
-                                        {system.icon}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white">{system.name}</h3>
-                                        <p className="text-sm text-zinc-500">{system.description}</p>
-                                        <p className="text-xs text-zinc-600 font-mono mt-1">{system.apiUrl}</p>
-                                    </div>
-                                </div>
-                                {currentUser.role === 'admin' && (
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleEdit(system)}
-                                            className="p-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteClick(system.id, e)}
-                                            className="p-2 bg-zinc-800 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                )}
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-white">Configured Systems ({systems.length})</h2>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search systems..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors w-64"
+                                />
                             </div>
-                        ))}
+                        </div>
+                        {systems
+                            .filter(system =>
+                                (system.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                                (system.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                                (system.api_url?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+                            )
+                            .map(system => (
+                                <div
+                                    key={system.id}
+                                    className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 flex items-center justify-between hover:border-zinc-700 transition-colors"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-14 h-14 ${colorThemes[system.color]?.light || 'bg-blue-500/10'} rounded-xl flex items-center justify-center text-3xl`}>
+                                            {system.icon}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">{system.name}</h3>
+                                            <p className="text-sm text-zinc-500">{system.description}</p>
+                                            <p className="text-xs text-zinc-600 font-mono mt-1">{system.api_url}</p>
+                                        </div>
+                                    </div>
+                                    {currentUser.role === 'admin' && (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleNotifications(system)}
+                                                className={`p-2 rounded-lg transition-colors ${system.notifications_enabled !== false
+                                                    ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                                                    : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'
+                                                    }`}
+                                                title={system.notifications_enabled !== false ? 'Notifications Enabled' : 'Notifications Disabled'}
+                                            >
+                                                {system.notifications_enabled !== false ? <Bell size={18} /> : <BellOff size={18} />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEdit(system)}
+                                                className="p-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDeleteClick(system.id, e)}
+                                                className="p-2 bg-zinc-800 hover:bg-red-900/50 text-red-400 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                     </div>
 
                     {/* Delete Confirmation Modal */}

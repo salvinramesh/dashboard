@@ -45,7 +45,7 @@ const startMonitoring = (pool) => {
                         const now = Date.now();
 
                         // 1. Memory Check
-                        if (stats.mem) {
+                        if (stats.mem && system.notifications_enabled) {
                             const memUsagePercent = (stats.mem.active / stats.mem.total) * 100;
                             if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
                                 if (now - lastAlertTimes[system.id].memory > ALERT_COOLDOWN) {
@@ -58,7 +58,7 @@ const startMonitoring = (pool) => {
                         }
 
                         // 2. Disk Check
-                        if (stats.disk && Array.isArray(stats.disk)) {
+                        if (stats.disk && Array.isArray(stats.disk) && system.notifications_enabled) {
                             for (const disk of stats.disk) {
                                 if (disk.use > DISK_THRESHOLD_PERCENT) {
                                     if (now - lastAlertTimes[system.id].disk > ALERT_COOLDOWN) {
@@ -72,7 +72,7 @@ const startMonitoring = (pool) => {
                             }
                         }
 
-                        if (systemStatus[system.id] && !systemStatus[system.id].isOnline) {
+                        if (systemStatus[system.id] && !systemStatus[system.id].isOnline && system.notifications_enabled) {
                             const msg = `✅ *System Recovered*: ${system.name} is back online.`;
                             console.log(msg);
                             sendAlert(msg).catch(console.error);
@@ -82,7 +82,7 @@ const startMonitoring = (pool) => {
                         throw new Error('Status ' + response.status);
                     }
                 } catch (err) {
-                    if (!systemStatus[system.id] || systemStatus[system.id].isOnline) {
+                    if ((!systemStatus[system.id] || systemStatus[system.id].isOnline) && system.notifications_enabled) {
                         const msg = `🛑 *System Offline*: ${system.name} is unreachable. Error: ${err.message}`;
                         console.log(msg);
                         sendAlert(msg).catch(console.error);
