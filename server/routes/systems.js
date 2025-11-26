@@ -14,12 +14,15 @@ const getProxyToken = () => {
 router.get('/', async (req, res) => {
     console.log('GET /api/systems request received');
     try {
+        console.log('Fetching systems from DB...');
         const result = await pool.query(
             'SELECT * FROM systems ORDER BY created_at ASC'
         );
+        console.log(`Found ${result.rows.length} systems`);
 
         const systems = result.rows.map(system => {
             const status = getSystemStatus(system.id);
+            // console.log(`System ${system.id} status:`, status);
             return {
                 ...system,
                 status: status?.isOnline ? 'online' : 'offline',
@@ -27,6 +30,7 @@ router.get('/', async (req, res) => {
             };
         });
 
+        console.log('Sending response...');
         res.json(systems);
     } catch (error) {
         console.error('Error fetching systems:', error);

@@ -152,7 +152,7 @@ app.get('/api/security', authenticateToken, async (req, res) => {
 
 // Webhook & Monitoring
 const { sendAlert } = require('./webhook');
-const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
+const { MONITOR_INTERVAL, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN, ENABLE_MONITORING } = require('./config');
 const os = require('os');
 
 let lastAlertTime = { memory: 0, disk: 0 };
@@ -195,14 +195,21 @@ const monitorSystem = async () => {
     }
 };
 
-setInterval(monitorSystem, MONITOR_INTERVAL);
+// Only start local monitoring if enabled
+if (ENABLE_MONITORING) {
+    setInterval(monitorSystem, MONITOR_INTERVAL);
+}
 
 // System Availability Monitoring
 const pool = require('./db');
 const monitor = require('./monitor');
 
-// Start monitoring
-monitor.startMonitoring(pool);
+// Start Monitoring Task
+if (ENABLE_MONITORING) {
+    monitor.startMonitoring(pool);
+} else {
+    console.log('Active monitoring disabled (Agent Mode)');
+}
 
 // Send startup alert
 sendAlert(`✅ *Server Started*: ${SERVER_NAME} is now online.`).catch(console.error);
