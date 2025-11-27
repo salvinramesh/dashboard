@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
-import { Users, Trash2, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Users, Trash2, Plus, AlertCircle, CheckCircle2, X } from 'lucide-react';
 
 const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     const [users, setUsers] = useState([]);
@@ -9,6 +9,7 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const token = localStorage.getItem('token');
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -62,6 +63,7 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
             setSuccess(`User ${data.username} ${editingId ? 'updated' : 'created'} successfully`);
             setFormData({ username: '', password: '', role: 'std' });
             setEditingId(null);
+            setIsModalOpen(false);
             fetchUsers();
         } catch (err) {
             setError(err.message);
@@ -75,7 +77,7 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
         setEditingId(user.id);
         setError('');
         setSuccess('');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsModalOpen(true);
     };
 
     const cancelEdit = () => {
@@ -124,83 +126,101 @@ const UserManagement = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                         </div>
                     </header>
 
-                    {/* Create/Edit User Form */}
+                    {/* Actions Bar */}
                     {currentUser.role === 'admin' && (
-                        <div className="mb-12 bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-3xl p-6">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <Plus size={20} className="text-blue-400" />
-                                {editingId ? 'Edit User' : 'Add New User'}
-                            </h2>
+                        <div className="mb-8 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ username: '', password: '', role: 'std' });
+                                    setIsModalOpen(true);
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <Plus size={18} />
+                                Add New User
+                            </button>
+                        </div>
+                    )}
 
-                            {error && (
-                                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
-                                    <AlertCircle size={20} />
-                                    {error}
-                                </div>
-                            )}
+                    {/* Modal */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
 
-                            {success && (
-                                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3 text-green-400">
-                                    <CheckCircle2 size={20} />
-                                    {success}
-                                </div>
-                            )}
+                                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                    {editingId ? <Users size={20} className="text-blue-400" /> : <Plus size={20} className="text-blue-400" />}
+                                    {editingId ? 'Edit User' : 'Add New User'}
+                                </h2>
 
-                            <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
-                                <div className="flex-1 w-full">
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Username</label>
-                                    <input
-                                        type="text"
-                                        value={formData.username}
-                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                        placeholder="Enter username"
-                                        required
-                                    />
-                                </div>
-                                <div className="flex-1 w-full">
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">
-                                        {editingId ? 'New Password (leave blank to keep)' : 'Password'}
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                        placeholder={editingId ? "Enter new password" : "Enter password"}
-                                        required={!editingId}
-                                    />
-                                </div>
-                                <div className="w-full md:w-48">
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Role</label>
-                                    <select
-                                        value={formData.role}
-                                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                    >
-                                        <option value="std">Standard</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    {editingId && (
+                                {error && (
+                                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm">
+                                        <AlertCircle size={20} />
+                                        {error}
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-zinc-400 mb-1.5">Username</label>
+                                        <input
+                                            type="text"
+                                            value={formData.username}
+                                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            placeholder="Enter username"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-zinc-400 mb-1.5">
+                                            {editingId ? 'New Password (leave blank to keep)' : 'Password'}
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                            placeholder={editingId ? "Enter new password" : "Enter password"}
+                                            required={!editingId}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-zinc-400 mb-1.5">Role</label>
+                                        <select
+                                            value={formData.role}
+                                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                        >
+                                            <option value="std">Standard</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex gap-3 mt-6">
                                         <button
                                             type="button"
-                                            onClick={cancelEdit}
-                                            className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
+                                            onClick={() => setIsModalOpen(false)}
+                                            className="flex-1 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
                                         >
                                             Cancel
                                         </button>
-                                    )}
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="flex-1 md:flex-none px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    >
-                                        {loading ? (editingId ? 'Updating...' : 'Adding...') : (editingId ? 'Update User' : 'Add User')}
-                                    </button>
-                                </div>
-                            </form>
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {loading ? (editingId ? 'Updating...' : 'Adding...') : (editingId ? 'Update User' : 'Add User')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     )}
 

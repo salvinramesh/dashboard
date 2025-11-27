@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { colorThemes } from '../config/systems';
 import { systemsAPI, generateId } from '../utils/api';
-import { Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut, Bell, BellOff, Search } from 'lucide-react';
+import { isHexColor } from '../utils/colors';
+import {
+    Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut, Bell, BellOff, Search, ChevronDown, Check
+} from 'lucide-react';
+import { iconMap, getIcon } from '../utils/icons';
 
 export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = true, onLogout }) => {
     const [systems, setSystems] = useState([]);
@@ -11,13 +15,14 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
     const [showForm, setShowForm] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showIconPicker, setShowIconPicker] = useState(false);
     const [formData, setFormData] = useState({
         id: '',
         name: '',
         description: '',
         apiUrl: '',
         color: 'blue',
-        icon: '🖥️'
+        icon: 'Server'
     });
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -41,7 +46,9 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
     };
 
     const colorOptions = Object.keys(colorThemes);
-    const iconOptions = ['🖥️', '💻', '🚀', '⚡', '🔧', '📊', '🌐', '☁️', '🔒', '⚙️'];
+    const iconOptions = Object.keys(iconMap);
+
+    const renderIcon = getIcon;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -55,7 +62,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
             description: '',
             apiUrl: '',
             color: 'blue',
-            icon: '🖥️'
+            icon: 'Server'
         });
         setEditingSystem(null);
         setShowForm(true);
@@ -263,36 +270,87 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-zinc-400 mb-2">Color Theme</label>
-                                            <select
-                                                name="color"
-                                                value={formData.color}
-                                                onChange={handleInputChange}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                            >
+                                            <div className="grid grid-cols-5 gap-3">
                                                 {colorOptions.map(color => (
-                                                    <option key={color} value={color} className="capitalize">
-                                                        {color}
-                                                    </option>
+                                                    <button
+                                                        key={color}
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({ ...prev, color }))}
+                                                        className={`
+                                                            h-12 rounded-xl transition-all duration-200 flex items-center justify-center
+                                                            ${colorThemes[color].primary}
+                                                            ${formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-105' : 'hover:scale-105 opacity-70 hover:opacity-100'}
+                                                        `}
+                                                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                                                    >
+                                                        {formData.color === color && <Check size={20} className="text-white" />}
+                                                    </button>
                                                 ))}
-                                            </select>
+
+                                                {/* Custom Color Picker */}
+                                                <div className="relative">
+                                                    <input
+                                                        type="color"
+                                                        value={isHexColor(formData.color) ? formData.color : '#3b82f6'}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className={`
+                                                            w-full h-12 rounded-xl transition-all duration-200 flex items-center justify-center
+                                                            bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500
+                                                            ${isHexColor(formData.color) ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-105' : 'hover:scale-105 opacity-70 hover:opacity-100'}
+                                                        `}
+                                                        title="Custom Color"
+                                                    >
+                                                        {isHexColor(formData.color) ? (
+                                                            <div className="w-6 h-6 rounded-full border-2 border-white" style={{ backgroundColor: formData.color }}></div>
+                                                        ) : (
+                                                            <Plus size={20} className="text-white" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-zinc-400 mb-2">Icon</label>
-                                            <div className="grid grid-cols-10 gap-2">
-                                                {iconOptions.map(icon => (
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-zinc-900 border border-zinc-800 rounded-xl flex items-center justify-center text-blue-400">
+                                                    {renderIcon(formData.icon)}
+                                                </div>
+                                                <div className="relative">
                                                     <button
-                                                        key={icon}
                                                         type="button"
-                                                        onClick={() => setFormData(prev => ({ ...prev, icon }))}
-                                                        className={`
-                                                            w-10 h-10 rounded-lg flex items-center justify-center text-2xl
-                                                            ${formData.icon === icon ? 'bg-blue-600' : 'bg-zinc-900 hover:bg-zinc-800'}
-                                                            transition-colors
-                                                        `}
+                                                        onClick={() => setShowIconPicker(!showIconPicker)}
+                                                        className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-colors shadow-lg shadow-blue-500/20"
+                                                        title="Select Icon"
                                                     >
-                                                        {icon}
+                                                        <Plus size={24} />
                                                     </button>
-                                                ))}
+
+                                                    {showIconPicker && (
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-80 bg-zinc-900 border border-zinc-700 rounded-xl p-4 shadow-2xl z-50 grid grid-cols-6 gap-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                                            {iconOptions.map((icon, index) => (
+                                                                <button
+                                                                    key={`${icon}-${index}`}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setFormData(prev => ({ ...prev, icon }));
+                                                                        setShowIconPicker(false);
+                                                                    }}
+                                                                    className={`
+                                                                        w-10 h-10 rounded-lg flex items-center justify-center text-2xl
+                                                                        ${formData.icon === icon ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : 'bg-zinc-800 hover:bg-zinc-700'}
+                                                                        transition-all duration-200 hover:scale-105
+                                                                    `}
+                                                                >
+                                                                    {renderIcon(icon)}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -345,8 +403,8 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                     className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 flex items-center justify-between hover:border-zinc-700 transition-colors"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-14 h-14 ${colorThemes[system.color]?.light || 'bg-blue-500/10'} rounded-xl flex items-center justify-center text-3xl`}>
-                                            {system.icon}
+                                        <div className={`w-14 h-14 ${colorThemes[system.color]?.light || 'bg-blue-500/10'} rounded-xl flex items-center justify-center text-blue-400`}>
+                                            {renderIcon(system.icon)}
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold text-white">{system.name}</h3>

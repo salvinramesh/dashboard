@@ -46,9 +46,11 @@ const startMonitoring = (pool) => {
 
                         // 1. Memory Check
                         if (stats.mem && system.notifications_enabled) {
-                            const memUsagePercent = (stats.mem.active / stats.mem.total) * 100;
+                            const memUsagePercent = (stats.mem.used / stats.mem.total) * 100;
                             if (memUsagePercent > MEMORY_THRESHOLD_PERCENT) {
-                                if (now - lastAlertTimes[system.id].memory > ALERT_COOLDOWN) {
+                                const timeSinceLastAlert = now - lastAlertTimes[system.id].memory;
+
+                                if (timeSinceLastAlert > ALERT_COOLDOWN) {
                                     const msg = `🚨 *High Memory Usage Alert* on ${system.name}\nUsage: ${memUsagePercent.toFixed(1)}%`;
                                     console.log(msg);
                                     sendAlert(msg).catch(console.error);
