@@ -163,7 +163,7 @@ router.get('/:id/resources', async (req, res) => {
 
         const { api_url } = result.rows[0];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for Windows
         const token = getProxyToken();
 
         try {
@@ -202,7 +202,7 @@ router.get('/:id/security', async (req, res) => {
 
         const { api_url } = result.rows[0];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for Windows
         const token = getProxyToken();
 
         try {
@@ -247,7 +247,7 @@ router.get('/:id/stats', async (req, res) => {
 
         const { api_url } = result.rows[0];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for Windows
         const token = getProxyToken();
 
         try {

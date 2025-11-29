@@ -54,7 +54,7 @@ export const Security = ({ system, onNavigate }) => {
                                     <Users className="text-green-500" /> Logged-in Users
                                 </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {data.users && data.users.length > 0 ? (
+                                    {data.users && Array.isArray(data.users) && data.users.length > 0 ? (
                                         data.users.map((user, i) => (
                                             <div key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 font-bold">
