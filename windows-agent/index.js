@@ -56,15 +56,20 @@ const initStaticData = async () => {
 const updateDiskStats = async () => {
     try {
         const fsSize = await si.fsSize();
-        staticData.disk = fsSize.map(disk => ({
-            fs: disk.fs,
-            type: disk.type,
-            size: disk.size,
-            used: disk.used,
-            use: disk.use,
-            mount: disk.mount
-        }));
-        console.log('Disk stats updated');
+        console.log('Raw fsSize:', fsSize); // Debug log
+        if (fsSize && fsSize.length > 0) {
+            staticData.disk = fsSize.map(disk => ({
+                fs: disk.fs,
+                type: disk.type,
+                size: disk.size,
+                used: disk.used,
+                use: disk.use,
+                mount: disk.mount
+            }));
+            console.log(`Disk stats updated: ${fsSize.length} disks found`);
+        } else {
+            console.warn('Disk stats updated but no disks found!');
+        }
     } catch (error) {
         console.error('Failed to update disk stats:', error);
     }
