@@ -262,6 +262,7 @@ router.get('/:id/stats', async (req, res) => {
             }
 
             const data = await response.json();
+            // console.log(`[DEBUG] Proxy stats for ${id}:`, JSON.stringify(data.disk));
             res.json(data);
         } catch (fetchError) {
             clearTimeout(timeoutId);

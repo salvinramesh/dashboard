@@ -27,24 +27,22 @@ const initStaticData = async () => {
             si.cpu(),
             si.system()
         ]);
-        staticData = {
-            os: {
-                platform: os.platform,
-                distro: os.distro,
-                release: os.release,
-                hostname: os.hostname,
-                arch: os.arch
-            },
-            cpu: {
-                manufacturer: cpu.manufacturer,
-                brand: cpu.brand,
-                cores: cpu.cores,
-                speed: cpu.speed
-            },
-            system: {
-                manufacturer: system.manufacturer,
-                model: system.model
-            }
+        staticData.os = {
+            platform: os.platform,
+            distro: os.distro,
+            release: os.release,
+            hostname: os.hostname,
+            arch: os.arch
+        };
+        staticData.cpu = {
+            manufacturer: cpu.manufacturer,
+            brand: cpu.brand,
+            cores: cpu.cores,
+            speed: cpu.speed
+        };
+        staticData.system = {
+            manufacturer: system.manufacturer,
+            model: system.model
         };
         console.log('Static system data cached');
     } catch (error) {
