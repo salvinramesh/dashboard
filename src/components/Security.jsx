@@ -92,22 +92,32 @@ export const Security = ({ system, onNavigate }) => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-800">
-                                            {data.connections.map((conn, i) => (
-                                                <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
-                                                    <td className="p-4 font-mono text-zinc-400 uppercase">{conn.protocol}</td>
-                                                    <td className="p-4 font-mono text-white">{conn.localAddress}:{conn.localPort}</td>
-                                                    <td className="p-4 font-mono text-zinc-500">{conn.peerAddress}:{conn.peerPort}</td>
-                                                    <td className="p-4">
-                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${conn.state === 'LISTEN' ? 'bg-blue-500/10 text-blue-500' :
-                                                            conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
-                                                                'bg-zinc-800 text-zinc-500'
-                                                            }`}>
-                                                            {conn.state}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-zinc-400">{conn.process || '-'}</td>
-                                                </tr>
-                                            ))}
+                                            <tbody className="divide-y divide-zinc-800">
+                                                {data.connections && Array.isArray(data.connections) && data.connections.length > 0 ? (
+                                                    data.connections.map((conn, i) => (
+                                                        <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
+                                                            <td className="p-4 font-mono text-zinc-400 uppercase">{conn.protocol}</td>
+                                                            <td className="p-4 font-mono text-white">{conn.localAddress}:{conn.localPort}</td>
+                                                            <td className="p-4 font-mono text-zinc-500">{conn.peerAddress}:{conn.peerPort}</td>
+                                                            <td className="p-4">
+                                                                <span className={`px-2 py-1 rounded text-xs font-bold ${conn.state === 'LISTEN' ? 'bg-blue-500/10 text-blue-500' :
+                                                                    conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
+                                                                        'bg-zinc-800 text-zinc-500'
+                                                                    }`}>
+                                                                    {conn.state}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-4 text-zinc-400">{conn.process || '-'}</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="5" className="p-8 text-center text-zinc-500">
+                                                            No active connections found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
                                         </tbody>
                                     </table>
                                 </div>

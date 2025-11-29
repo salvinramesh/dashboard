@@ -175,7 +175,10 @@ app.get('/api/resources', authenticateToken, async (req, res) => {
 
 app.get('/api/security', authenticateToken, async (req, res) => {
     try {
-        const users = await si.users();
+        const [users, connections] = await Promise.all([
+            si.users(),
+            si.networkConnections().catch(() => []) // Handle potential permission issues
+        ]);
 
         res.json({
             users: users.map(u => ({
@@ -183,6 +186,15 @@ app.get('/api/security', authenticateToken, async (req, res) => {
                 tty: u.tty,
                 date: u.date,
                 ip: u.ip
+            })),
+            connections: connections.map(conn => ({
+                protocol: conn.protocol,
+                localAddress: conn.localAddress,
+                localPort: conn.localPort,
+                peerAddress: conn.peerAddress,
+                peerPort: conn.peerPort,
+                state: conn.state,
+                process: conn.process
             })),
             authLogs: [] // Windows event logs are complex to parse, returning empty for now
         });
