@@ -15,7 +15,8 @@ app.use(express.json());
 let staticData = {
     os: null,
     cpu: null,
-    system: null
+    system: null,
+    disk: []
 };
 
 // Initialize static data
@@ -51,7 +52,27 @@ const initStaticData = async () => {
     }
 };
 
+// Update disk stats periodically (every 5 minutes)
+const updateDiskStats = async () => {
+    try {
+        const fsSize = await si.fsSize();
+        staticData.disk = fsSize.map(disk => ({
+            fs: disk.fs,
+            type: disk.type,
+            size: disk.size,
+            used: disk.used,
+            use: disk.use,
+            mount: disk.mount
+        }));
+        console.log('Disk stats updated');
+    } catch (error) {
+        console.error('Failed to update disk stats:', error);
+    }
+};
+
 initStaticData();
+updateDiskStats();
+setInterval(updateDiskStats, 300000); // 5 minutes
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
@@ -73,11 +94,10 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
         // Optimized for Windows: avoid slow calls like fsSize if possible or cache them if needed
         // For now, we fetch basic dynamic stats which should be fast enough
 
-        const [currentLoad, mem, networkStats, fsSize] = await Promise.all([
+        const [currentLoad, mem, networkStats] = await Promise.all([
             si.currentLoad(),
             si.mem(),
-            si.networkStats(),
-            si.fsSize()
+            si.networkStats()
         ]);
 
         res.json({
@@ -101,14 +121,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
                 tx_bytes: iface.tx_bytes,
                 operstate: iface.operstate
             })),
-            disk: fsSize.map(disk => ({
-                fs: disk.fs,
-                type: disk.type,
-                size: disk.size,
-                used: disk.used,
-                use: disk.use,
-                mount: disk.mount
-            })),
+            disk: staticData.disk || [],
             os: staticData.os,
             system: staticData.system,
             uptime: si.time().uptime,
