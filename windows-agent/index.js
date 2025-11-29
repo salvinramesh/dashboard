@@ -136,6 +136,62 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/resources', authenticateToken, async (req, res) => {
+    try {
+        const [processes, docker] = await Promise.all([
+            si.processes(),
+            si.dockerContainers().catch(() => []) // Handle case where Docker is not running
+        ]);
+
+        // Format processes to match frontend expectation
+        const formattedProcesses = processes.list
+            .sort((a, b) => b.cpu - a.cpu)
+            .slice(0, 10)
+            .map(p => ({
+                pid: p.pid,
+                name: p.name,
+                user: p.user,
+                cpu: p.cpu,
+                mem: p.mem
+            }));
+
+        // Format docker containers
+        const formattedDocker = docker.map(c => ({
+            name: c.name,
+            image: c.image,
+            state: c.state,
+            status: c.status
+        }));
+
+        res.json({
+            processes: formattedProcesses,
+            docker: formattedDocker
+        });
+    } catch (error) {
+        console.error('Error fetching resources:', error);
+        res.status(500).json({ error: 'Failed to fetch resources' });
+    }
+});
+
+app.get('/api/security', authenticateToken, async (req, res) => {
+    try {
+        const users = await si.users();
+
+        res.json({
+            users: users.map(u => ({
+                user: u.user,
+                tty: u.tty,
+                date: u.date,
+                ip: u.ip
+            })),
+            authLogs: [] // Windows event logs are complex to parse, returning empty for now
+        });
+    } catch (error) {
+        console.error('Error fetching security info:', error);
+        res.status(500).json({ error: 'Failed to fetch security info' });
+    }
+});
+
 // Health check endpoint (no auth required)
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', uptime: process.uptime() });
