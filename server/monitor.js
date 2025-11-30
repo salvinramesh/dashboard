@@ -28,7 +28,7 @@ const startMonitoring = (pool) => {
 
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    const timeoutId = setTimeout(() => controller.abort(), 40000);
 
                     const response = await fetch(system.api_url + '/api/stats', {
                         signal: controller.signal,
