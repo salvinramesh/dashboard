@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import 'xterm/css/xterm.css';
 import { X, Play, Square, FileText } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3006';
+const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:3006`;
 
 const COMMON_LOGS = [
     { name: 'Syslog (Linux)', path: '/var/log/syslog' },

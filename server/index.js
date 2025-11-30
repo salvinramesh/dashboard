@@ -3,6 +3,7 @@ const si = require('systeminformation');
 const pool = require('./db');
 const monitor = require('./monitor');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = 3006;
 

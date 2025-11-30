@@ -98,6 +98,24 @@ export const systemsAPI = {
         }
     },
 
+    // Get system history
+    getHistory: async (id, range = '1h') => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        try {
+            const response = await fetch(`${API_BASE}/${id}/history?range=${range}`, {
+                signal: controller.signal,
+                headers: getHeaders()
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error('Failed to fetch history');
+            return response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
+        }
+    },
+
     // Create new system
     create: async (system) => {
         const response = await fetch(API_BASE, {

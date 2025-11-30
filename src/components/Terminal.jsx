@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import 'xterm/css/xterm.css';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3006';
+const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:3006`;
 
 export const Terminal = ({ systemId, systemName, onClose }) => {
     const terminalRef = useRef(null);
