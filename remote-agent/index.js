@@ -11,14 +11,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 app.use(cors());
 app.use(express.json());
 
-// WAN IP Caching
+// WAN IP & Interface Caching
 let cachedWanIp = null;
+let cachedInterfaces = null;
 let lastWanIpCheck = 0;
-const WAN_IP_CACHE_DURATION = 3600000; // 1 hour
+let lastInterfaceCheck = 0;
+const CACHE_DURATION = 3600000; // 1 hour
 
 const getPublicIp = async () => {
     const now = Date.now();
-    if (cachedWanIp && (now - lastWanIpCheck < WAN_IP_CACHE_DURATION)) {
+    if (cachedWanIp && (now - lastWanIpCheck < CACHE_DURATION)) {
         return cachedWanIp;
     }
 
@@ -38,6 +40,21 @@ const getPublicIp = async () => {
         console.error('Failed to fetch WAN IP:', error.message);
     }
     return cachedWanIp || 'Unknown';
+};
+
+const getNetworkInterfaces = async () => {
+    const now = Date.now();
+    if (cachedInterfaces && (now - lastInterfaceCheck < CACHE_DURATION)) {
+        return cachedInterfaces;
+    }
+    try {
+        cachedInterfaces = await si.networkInterfaces();
+        lastInterfaceCheck = now;
+        return cachedInterfaces;
+    } catch (error) {
+        console.error('Failed to fetch network interfaces:', error);
+        return [];
+    }
 };
 
 // Cache static data to reduce load time
@@ -130,7 +147,7 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
             si.currentLoad(),
             si.mem(),
             si.networkStats(),
-            si.networkInterfaces(),
+            getNetworkInterfaces(),
             getPublicIp()
         ]);
 
