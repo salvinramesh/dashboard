@@ -1,8 +1,10 @@
 const express = require('express');
 const si = require('systeminformation');
+const pool = require('./db');
+const monitor = require('./monitor');
 const cors = require('cors');
 const app = express();
-const PORT = 3001;
+const PORT = 3006;
 
 // Middleware
 app.use((req, res, next) => {
@@ -29,6 +31,7 @@ const authenticateToken = require('./middleware/auth');
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/systems', authenticateToken, systemsRouter);
+app.get('/ping', (req, res) => res.send('pong'));
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -201,8 +204,8 @@ if (ENABLE_MONITORING) {
 }
 
 // System Availability Monitoring
-const pool = require('./db');
-const monitor = require('./monitor');
+// const pool = require('./db'); // Already required at top
+// const monitor = require('./monitor'); // Already required at top
 
 // Start Monitoring Task
 if (ENABLE_MONITORING) {

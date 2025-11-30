@@ -210,5 +210,5 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Windows Agent running on port ${PORT}`);
+    console.log(`Remote Agent running on port ${PORT}`);
 });

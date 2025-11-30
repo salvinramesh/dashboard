@@ -10,8 +10,7 @@ module.exports = {
     MONITOR_INTERVAL: 10000,
 
     // Master switch for active monitoring (set to false for remote agents)
-    ENABLE_MONITORING: true,
-
+    ENABLE_MONITORING: true, // process.env.ENABLE_MONITORING === 'true'
     // Cooldown between alerts in milliseconds (e.g., 1 hour) to avoid spam
     ALERT_COOLDOWN: 6000000,
 
