@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Server, Settings, Activity, Shield, Users } from 'lucide-react';
+import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network } from 'lucide-react';
 
 export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
@@ -36,6 +36,12 @@ export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                         />
                     </>
                 )}
+                <NavItem
+                    icon={<Network size={20} />}
+                    label="Network"
+                    active={currentPage === 'network'}
+                    onClick={() => onNavigate?.('network')}
+                />
                 <NavItem
                     icon={<Users size={20} />}
                     label="Users"
@@ -84,3 +90,4 @@ const NavItem = ({ icon, label, active, onClick }) => {
         </button>
     );
 };
+

@@ -7,6 +7,7 @@ import { Security } from './components/Security';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
+import { NetworkTraffic } from './components/NetworkTraffic';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -64,6 +65,8 @@ function App() {
         <Resources system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'security' ? (
         <Security system={selectedSystem} onNavigate={handleNavigate} />
+      ) : currentView === 'network' ? (
+        <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} />
       ) : currentView === 'users' ? (
         <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : currentView === 'settings' ? (
