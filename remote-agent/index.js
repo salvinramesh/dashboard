@@ -11,6 +11,35 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 app.use(cors());
 app.use(express.json());
 
+// WAN IP Caching
+let cachedWanIp = null;
+let lastWanIpCheck = 0;
+const WAN_IP_CACHE_DURATION = 3600000; // 1 hour
+
+const getPublicIp = async () => {
+    const now = Date.now();
+    if (cachedWanIp && (now - lastWanIpCheck < WAN_IP_CACHE_DURATION)) {
+        return cachedWanIp;
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            cachedWanIp = data.ip;
+            lastWanIpCheck = now;
+            return cachedWanIp;
+        }
+    } catch (error) {
+        console.error('Failed to fetch WAN IP:', error.message);
+    }
+    return cachedWanIp || 'Unknown';
+};
+
 // Cache static data to reduce load time
 let staticData = {
     os: null,
@@ -97,10 +126,12 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
         // Optimized for Windows: avoid slow calls like fsSize if possible or cache them if needed
         // For now, we fetch basic dynamic stats which should be fast enough
 
-        const [currentLoad, mem, networkStats] = await Promise.all([
+        const [currentLoad, mem, networkStats, networkInterfaces, wanIp] = await Promise.all([
             si.currentLoad(),
             si.mem(),
-            si.networkStats()
+            si.networkStats(),
+            si.networkInterfaces(),
+            getPublicIp()
         ]);
 
         res.json({
@@ -124,6 +155,8 @@ app.get('/api/stats', authenticateToken, async (req, res) => {
                 tx_bytes: iface.tx_bytes,
                 operstate: iface.operstate
             })),
+            interfaces: networkInterfaces,
+            wanIp: wanIp,
             disk: staticData.disk || [],
             os: staticData.os,
             system: staticData.system,
