@@ -30,14 +30,6 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
 
-        if (terminalRef.current) {
-            term.open(terminalRef.current);
-            // Delay fit to ensure container has dimensions
-            setTimeout(() => {
-                fitAddon.fit();
-            }, 100);
-        }
-
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
 
@@ -45,6 +37,44 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
         const token = localStorage.getItem('token');
         const socket = io(API_URL);
         socketRef.current = socket;
+
+        let resizeObserver;
+        let handleWindowResize;
+
+        if (terminalRef.current) {
+            term.open(terminalRef.current);
+
+            // Robust fit handling
+            const fitTerminal = () => {
+                try {
+                    fitAddon.fit();
+                    // Also emit resize to server after fitting
+                    if (socketRef.current && xtermRef.current && socketRef.current.connected) {
+                        socketRef.current.emit('resize', {
+                            cols: xtermRef.current.cols,
+                            rows: xtermRef.current.rows
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Failed to fit terminal:', e);
+                }
+            };
+
+            // Initial fit delay
+            setTimeout(fitTerminal, 100);
+
+            // Resize observer for terminal container
+            resizeObserver = new ResizeObserver(() => {
+                requestAnimationFrame(fitTerminal);
+            });
+            resizeObserver.observe(terminalRef.current);
+
+            // Handle window resize (still useful for overall layout changes)
+            handleWindowResize = () => {
+                fitTerminal(); // Use the robust fit function
+            };
+            window.addEventListener('resize', handleWindowResize);
+        }
 
         socket.on('connect', () => {
             setStatus('Connected to Server. Authenticating...');
