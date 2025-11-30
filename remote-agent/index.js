@@ -306,8 +306,15 @@ app.get('/health', (req, res) => {
 
 const http = require('http');
 const { Server } = require('socket.io');
-const pty = require('node-pty');
+const { spawn } = require('child_process');
 const os = require('os');
+
+let pty = null;
+try {
+    pty = require('node-pty');
+} catch (e) {
+    console.warn('node-pty not found. Terminal features will be limited.');
+}
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -334,6 +341,11 @@ io.on('connection', (socket) => {
             jwt.verify(token, JWT_SECRET);
         } catch (err) {
             socket.emit('error', 'Invalid token');
+            return;
+        }
+
+        if (!pty) {
+            socket.emit('error', 'Terminal not available (missing node-pty)');
             return;
         }
 
@@ -381,6 +393,9 @@ io.on('connection', (socket) => {
         if (term) {
             term.kill();
         }
+        if (logProcess) {
+            logProcess.kill();
+        }
     });
 
     // Log Viewer Logic
@@ -404,22 +419,42 @@ io.on('connection', (socket) => {
         const args = isWin ? ['-Command', `Get-Content -Path "${path}" -Wait -Tail 20`] : ['-f', '-n', '20', path];
 
         try {
-            logProcess = pty.spawn(cmd, args, {
-                name: 'xterm-color',
-                cols: 200, // Wide enough for logs
-                rows: 30,
-                cwd: process.env.HOME || process.cwd(),
-                env: process.env
-            });
+            if (pty) {
+                // Use PTY if available (better for buffering)
+                logProcess = pty.spawn(cmd, args, {
+                    name: 'xterm-color',
+                    cols: 200,
+                    rows: 30,
+                    cwd: process.env.HOME || process.cwd(),
+                    env: process.env
+                });
 
-            logProcess.on('data', (data) => {
-                socket.emit('log-output', data);
-            });
+                logProcess.on('data', (data) => {
+                    socket.emit('log-output', data);
+                });
 
-            logProcess.on('exit', (code) => {
-                console.log(`Log process exited with code ${code}`);
-                socket.emit('log-exit', code);
-            });
+                logProcess.on('exit', (code) => {
+                    console.log(`Log process exited with code ${code}`);
+                    socket.emit('log-exit', code);
+                });
+            } else {
+                // Fallback to child_process.spawn
+                console.log('Using child_process.spawn for logs (no PTY)');
+                logProcess = spawn(cmd, args);
+
+                logProcess.stdout.on('data', (data) => {
+                    socket.emit('log-output', data.toString());
+                });
+
+                logProcess.stderr.on('data', (data) => {
+                    socket.emit('log-output', data.toString());
+                });
+
+                logProcess.on('close', (code) => {
+                    console.log(`Log process exited with code ${code}`);
+                    socket.emit('log-exit', code);
+                });
+            }
         } catch (err) {
             console.error('Failed to spawn log process:', err);
             socket.emit('log-error', `Failed to open log: ${err.message}`);
