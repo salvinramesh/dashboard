@@ -1,9 +1,9 @@
 import React from 'react';
-import { Server, Cpu, HardDrive, TrendingUp, AlertCircle } from 'lucide-react';
+import { Server, Cpu, HardDrive, TrendingUp, AlertCircle, TerminalSquare, FileText } from 'lucide-react';
 import { getSystemTheme } from '../utils/colors';
 import { getIcon } from '../utils/icons';
 
-export const SystemTile = ({ system, onClick }) => {
+export const SystemTile = ({ system, onClick, onOpenTerminal, onOpenLogs }) => {
     const { status, stats } = system;
     const theme = getSystemTheme(system.color);
 
@@ -21,15 +21,41 @@ export const SystemTile = ({ system, onClick }) => {
                 ${status === 'online' ? 'cursor-pointer hover:scale-[1.02]' : 'opacity-60'}
             `}
         >
-            {/* Status Indicator */}
-            <div className="absolute top-4 right-4 flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${status === 'online' ? 'bg-green-500 animate-pulse' :
-                    status === 'offline' ? 'bg-red-500' :
-                        'bg-yellow-500 animate-pulse'
-                    }`}></div>
-                <span className="text-xs text-zinc-500 uppercase font-bold">
-                    {status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Checking...'}
-                </span>
+            {/* Status Indicator & Actions */}
+            <div className="absolute top-4 right-4 flex items-center gap-3">
+                {status === 'online' && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenTerminal && onOpenTerminal();
+                        }}
+                        className="p-1.5 bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors"
+                        title="Open Terminal"
+                    >
+                        <TerminalSquare size={16} />
+                    </button>
+                )}
+                {status === 'online' && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenLogs && onOpenLogs();
+                        }}
+                        className="p-1.5 bg-zinc-800/50 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors"
+                        title="View Logs"
+                    >
+                        <FileText size={16} />
+                    </button>
+                )}
+                <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${status === 'online' ? 'bg-green-500 animate-pulse' :
+                        status === 'offline' ? 'bg-red-500' :
+                            'bg-yellow-500 animate-pulse'
+                        }`}></div>
+                    <span className="text-xs text-zinc-500 uppercase font-bold">
+                        {status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Checking...'}
+                    </span>
+                </div>
             </div>
 
             {/* System Icon & Name */}

@@ -12,7 +12,8 @@ module.exports = {
     // Master switch for active monitoring (set to false for remote agents)
     ENABLE_MONITORING: true, // process.env.ENABLE_MONITORING === 'true'
     // Cooldown between alerts in milliseconds (e.g., 1 hour) to avoid spam
-    ALERT_COOLDOWN: 6000000,
+    ALERT_COOLDOWN: 5 * 60 * 1000, // 5 minutes
+    METRIC_SAVE_INTERVAL: 60 * 1000, // 1 minute
 
     // JWT Secret
     JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production'

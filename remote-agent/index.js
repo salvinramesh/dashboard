@@ -254,11 +254,187 @@ app.get('/api/security', authenticateToken, async (req, res) => {
     }
 });
 
+// Auto-Update Logic
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3006'; // Configure this in .env
+const CURRENT_VERSION = require('./package.json').version;
+const fs = require('fs');
+
+const checkForUpdates = async () => {
+    try {
+        console.log(`Checking for updates (Current: ${CURRENT_VERSION})...`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(`${SERVER_URL}/api/agent/version`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const { version: remoteVersion } = await response.json();
+            if (remoteVersion !== CURRENT_VERSION) {
+                console.log(`New version found: ${remoteVersion}. Downloading...`);
+
+                const downloadResponse = await fetch(`${SERVER_URL}/api/agent/download`);
+                if (downloadResponse.ok) {
+                    const newCode = await downloadResponse.text();
+                    fs.writeFileSync('index.js.new', newCode);
+
+                    // Atomic rename
+                    fs.renameSync('index.js.new', 'index.js');
+
+                    console.log('Update applied. Restarting...');
+                    process.exit(0); // PM2/Service should restart
+                }
+            } else {
+                console.log('Agent is up to date.');
+            }
+        }
+    } catch (error) {
+        console.error('Update check failed:', error.message);
+    }
+};
+
+// Check on startup and every hour
+checkForUpdates();
+setInterval(checkForUpdates, 3600000);
+
 // Health check endpoint (no auth required)
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', uptime: process.uptime() });
+    res.json({ status: 'ok', uptime: process.uptime(), version: CURRENT_VERSION });
 });
 
-app.listen(PORT, () => {
+// ... (previous code)
+
+const http = require('http');
+const { Server } = require('socket.io');
+const pty = require('node-pty');
+const os = require('os');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Allow connection from Dashboard Server
+        methods: ['GET', 'POST']
+    }
+});
+
+// Terminal Socket Logic
+io.on('connection', (socket) => {
+    console.log('New socket connection:', socket.id);
+    let term = null;
+
+    socket.on('start-terminal', (data) => {
+        // Verify token (simplified for socket)
+        const token = data?.token;
+        if (!token) {
+            socket.emit('error', 'Authentication required');
+            return;
+        }
+
+        try {
+            jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+            socket.emit('error', 'Invalid token');
+            return;
+        }
+
+        const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+
+        try {
+            term = pty.spawn(shell, [], {
+                name: 'xterm-color',
+                cols: 80,
+                rows: 24,
+                cwd: process.env.HOME || process.cwd(),
+                env: process.env
+            });
+
+            console.log(`Spawned terminal ${term.pid}`);
+
+            term.on('data', (data) => {
+                socket.emit('output', data);
+            });
+
+            term.on('exit', (code) => {
+                console.log(`Terminal ${term?.pid} exited with code ${code}`);
+                socket.emit('exit', code);
+            });
+        } catch (err) {
+            console.error('Failed to spawn terminal:', err);
+            socket.emit('error', 'Failed to spawn terminal');
+        }
+    });
+
+    socket.on('input', (data) => {
+        if (term) {
+            term.write(data);
+        }
+    });
+
+    socket.on('resize', (size) => {
+        if (term) {
+            term.resize(size.cols, size.rows);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Socket disconnected:', socket.id);
+        if (term) {
+            term.kill();
+        }
+    });
+
+    // Log Viewer Logic
+    let logProcess = null;
+
+    socket.on('watch-log', (data) => {
+        const { path } = data;
+        if (!path) return;
+
+        console.log(`Starting log watch for: ${path}`);
+
+        // Kill existing process if any
+        if (logProcess) {
+            try {
+                logProcess.kill();
+            } catch (e) { }
+        }
+
+        const isWin = os.platform() === 'win32';
+        const cmd = isWin ? 'powershell.exe' : 'tail';
+        const args = isWin ? ['-Command', `Get-Content -Path "${path}" -Wait -Tail 20`] : ['-f', '-n', '20', path];
+
+        try {
+            logProcess = pty.spawn(cmd, args, {
+                name: 'xterm-color',
+                cols: 200, // Wide enough for logs
+                rows: 30,
+                cwd: process.env.HOME || process.cwd(),
+                env: process.env
+            });
+
+            logProcess.on('data', (data) => {
+                socket.emit('log-output', data);
+            });
+
+            logProcess.on('exit', (code) => {
+                console.log(`Log process exited with code ${code}`);
+                socket.emit('log-exit', code);
+            });
+        } catch (err) {
+            console.error('Failed to spawn log process:', err);
+            socket.emit('log-error', `Failed to open log: ${err.message}`);
+        }
+    });
+
+    socket.on('stop-log', () => {
+        if (logProcess) {
+            console.log('Stopping log watch');
+            logProcess.kill();
+            logProcess = null;
+        }
+    });
+});
+
+server.listen(PORT, () => {
     console.log(`Remote Agent running on port ${PORT}`);
 });

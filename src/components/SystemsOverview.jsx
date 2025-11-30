@@ -3,12 +3,16 @@ import { SystemTile } from './SystemTile';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
 import { LayoutGrid, Search } from 'lucide-react';
+import { Terminal } from './Terminal';
+import { LogViewer } from './LogViewer';
 
 export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeTerminalSystem, setActiveTerminalSystem] = useState(null);
+    const [activeLogSystem, setActiveLogSystem] = useState(null);
 
     const filteredSystems = systems.filter(system =>
         system.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -108,11 +112,31 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
                                     apiUrl: system.api_url // Map database field to frontend field
                                 }}
                                 onClick={onSelectSystem}
+                                onOpenTerminal={() => setActiveTerminalSystem(system)}
+                                onOpenLogs={() => setActiveLogSystem(system)}
                             />
                         ))}
                     </div>
                 </main>
             </div>
+
+            {/* Terminal Modal */}
+            {activeTerminalSystem && (
+                <Terminal
+                    systemId={activeTerminalSystem.id}
+                    systemName={activeTerminalSystem.name}
+                    onClose={() => setActiveTerminalSystem(null)}
+                />
+            )}
+
+            {/* Log Viewer Modal */}
+            {activeLogSystem && (
+                <LogViewer
+                    systemId={activeLogSystem.id}
+                    systemName={activeLogSystem.name}
+                    onClose={() => setActiveLogSystem(null)}
+                />
+            )}
         </div>
     );
 };

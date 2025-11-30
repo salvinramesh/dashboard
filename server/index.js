@@ -28,9 +28,12 @@ const usersRouter = require('./routes/users');
 const systemsRouter = require('./routes/systems');
 const authenticateToken = require('./middleware/auth');
 
+const agentRoutes = require('./routes/agent');
+
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/systems', authenticateToken, systemsRouter);
+app.use('/api/agent', agentRoutes);
 app.get('/ping', (req, res) => res.send('pong'));
 
 // Global error handler
@@ -231,6 +234,104 @@ const handleShutdown = async (signal) => {
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 
-app.listen(PORT, () => {
+// ... (previous code)
+
+const http = require('http');
+const { Server } = require('socket.io');
+const { io: Client } = require('socket.io-client');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Allow connection from Frontend
+        methods: ['GET', 'POST']
+    }
+});
+
+// Socket Proxy Logic
+io.on('connection', (socket) => {
+    console.log('Frontend connected:', socket.id);
+    let agentSocket = null;
+
+    socket.on('connect-terminal', async ({ systemId, token }) => {
+        try {
+            // Verify User Token
+            const user = jwt.verify(token, process.env.JWT_SECRET);
+            if (!user) {
+                socket.emit('error', 'Authentication failed');
+                return;
+            }
+
+            // Get System URL
+            const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [systemId]);
+            if (result.rows.length === 0) {
+                socket.emit('error', 'System not found');
+                return;
+            }
+            const { api_url } = result.rows[0];
+
+            // Connect to Agent
+            console.log(`Connecting to agent at ${api_url}...`);
+            agentSocket = Client(api_url);
+
+            agentSocket.on('connect', () => {
+                console.log(`Connected to agent ${systemId}`);
+                // Generate Proxy Token for Agent
+                const proxyToken = jwt.sign({ username: 'proxy', role: 'system' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+                agentSocket.emit('start-terminal', { token: proxyToken });
+            });
+
+            agentSocket.on('output', (data) => {
+                socket.emit('output', data);
+            });
+
+            agentSocket.on('error', (err) => {
+                socket.emit('error', err);
+            });
+
+            agentSocket.on('disconnect', () => {
+                socket.emit('error', 'Agent disconnected');
+            });
+
+            socket.on('input', (data) => {
+                if (agentSocket) agentSocket.emit('input', data);
+            });
+
+            socket.on('resize', (size) => {
+                if (agentSocket) agentSocket.emit('resize', size);
+            });
+
+            // Log Viewer Proxy
+            socket.on('watch-log', (data) => {
+                if (agentSocket) agentSocket.emit('watch-log', data);
+            });
+
+            socket.on('stop-log', () => {
+                if (agentSocket) agentSocket.emit('stop-log');
+            });
+
+            agentSocket.on('log-output', (data) => {
+                socket.emit('log-output', data);
+            });
+
+            agentSocket.on('log-error', (data) => {
+                socket.emit('log-error', data);
+            });
+
+        } catch (err) {
+            console.error('Terminal proxy error:', err);
+            socket.emit('error', 'Connection failed');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Frontend disconnected:', socket.id);
+        if (agentSocket) {
+            agentSocket.disconnect();
+        }
+    });
+});
+
+server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const { sendAlert } = require('./webhook');
-const { MONITOR_INTERVAL, JWT_SECRET, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN } = require('./config');
+const { MONITOR_INTERVAL, JWT_SECRET, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN, METRIC_SAVE_INTERVAL } = require('./config');
 
 let systemStatus = {};
 let lastAlertTimes = {}; // Map of systemId -> { memory: timestamp, disk: timestamp }
+let lastMetricSaveTimes = {}; // Map of systemId -> timestamp
 
 const getSystemStatus = (id) => {
     return systemStatus[id];
@@ -71,6 +72,30 @@ const startMonitoring = (pool) => {
                                         break; // Alert once per system per cooldown to avoid spam
                                     }
                                 }
+                            }
+                        }
+
+                        // Persist Metrics
+                        if (!lastMetricSaveTimes[system.id] || (now - lastMetricSaveTimes[system.id] >= METRIC_SAVE_INTERVAL)) {
+                            try {
+                                await pool.query(
+                                    `INSERT INTO system_metrics 
+                                    (system_id, cpu_load, memory_used, memory_total, disk_usage, network_rx, network_tx) 
+                                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                                    [
+                                        system.id,
+                                        typeof stats.cpu === 'object' ? stats.cpu.load : stats.cpu,
+                                        stats.mem.used,
+                                        stats.mem.total,
+                                        JSON.stringify(stats.disk),
+                                        stats.network[0]?.rx_bytes || 0,
+                                        stats.network[0]?.tx_bytes || 0
+                                    ]
+                                );
+                                lastMetricSaveTimes[system.id] = now;
+                                // console.log(`Saved metrics for ${system.name}`);
+                            } catch (dbErr) {
+                                console.error(`Failed to save metrics for ${system.name}:`, dbErr);
                             }
                         }
 
