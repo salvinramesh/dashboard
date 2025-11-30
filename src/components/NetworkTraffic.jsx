@@ -3,7 +3,7 @@ import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
 import { ArrowDown, ArrowUp, Activity, Server, AlertCircle, X } from 'lucide-react';
 
-export const NetworkTraffic = ({ onNavigate }) => {
+export const NetworkTraffic = ({ onNavigate, showSystemLinks }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -93,7 +93,7 @@ export const NetworkTraffic = ({ onNavigate }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-blue-500/30">
-            <Sidebar currentPage="network" onNavigate={onNavigate} />
+            <Sidebar currentPage="network" onNavigate={onNavigate} showSystemLinks={showSystemLinks} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">

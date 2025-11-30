@@ -66,7 +66,7 @@ function App() {
       ) : currentView === 'security' ? (
         <Security system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'network' ? (
-        <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} />
+        <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : currentView === 'users' ? (
         <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : currentView === 'settings' ? (

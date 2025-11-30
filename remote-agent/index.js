@@ -313,7 +313,8 @@ let pty = null;
 try {
     pty = require('node-pty');
 } catch (e) {
-    console.warn('node-pty not found. Terminal features will be limited.');
+    console.warn('node-pty failed to load:', e);
+    console.warn('Node version:', process.version);
 }
 
 const server = http.createServer(app);
