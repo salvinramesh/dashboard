@@ -32,7 +32,10 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
 
         if (terminalRef.current) {
             term.open(terminalRef.current);
-            fitAddon.fit();
+            // Delay fit to ensure container has dimensions
+            setTimeout(() => {
+                fitAddon.fit();
+            }, 100);
         }
 
         xtermRef.current = term;

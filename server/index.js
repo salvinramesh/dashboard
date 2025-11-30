@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const si = require('systeminformation');
 const pool = require('./db');
