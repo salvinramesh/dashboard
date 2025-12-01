@@ -351,7 +351,7 @@ router.post('/:id/processes/:pid/kill', async (req, res) => {
 
         const { api_url } = result.rows[0];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         const token = getProxyToken();
 
         try {

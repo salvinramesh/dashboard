@@ -255,6 +255,31 @@ app.get('/api/security', authenticateToken, async (req, res) => {
 });
 
 
+// Process Management Endpoints
+app.post('/api/processes/:pid/kill', authenticateToken, (req, res) => {
+    const pid = parseInt(req.params.pid);
+
+    try {
+        process.kill(pid, 'SIGKILL'); // Force kill
+        res.json({ status: 'success', message: `Process ${pid} killed` });
+    } catch (e) {
+        console.error(`Failed to kill process ${pid}:`, e);
+        // Fallback for Windows or permission issues
+        const isWin = os.platform() === 'win32';
+        const cmd = isWin ? `taskkill /F /PID ${pid}` : `kill -9 ${pid}`;
+
+        const { exec } = require('child_process');
+        exec(cmd, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Fallback kill failed for ${pid}:`, stderr || error.message);
+                return res.status(500).json({ error: `Failed to kill process ${pid}` });
+            }
+            res.json({ status: 'success', message: `Process ${pid} killed (fallback)` });
+        });
+    }
+});
+
+
 // Service Management Endpoints
 app.get('/api/services', authenticateToken, async (req, res) => {
     try {
