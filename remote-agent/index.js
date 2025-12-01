@@ -253,7 +253,7 @@ app.get('/api/security', authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch security info' });
     }
 }
-});
+
 
 // Service Management Endpoints
 app.get('/api/services', authenticateToken, async (req, res) => {
@@ -335,8 +335,7 @@ app.post('/api/services/:name/:action', authenticateToken, async (req, res) => {
     });
 });
 
-    });
-});
+
 
 // Docker Management Endpoints
 app.post('/api/docker/:id/:action', authenticateToken, async (req, res) => {
@@ -357,8 +356,7 @@ app.post('/api/docker/:id/:action', authenticateToken, async (req, res) => {
     });
 });
 
-    });
-});
+
 
 // File Management Endpoints
 app.get('/api/files/list', authenticateToken, async (req, res) => {
