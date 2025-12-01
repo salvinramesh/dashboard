@@ -5,14 +5,16 @@ import { systemsAPI } from '../utils/api';
 import { LayoutGrid, Search } from 'lucide-react';
 import { Terminal } from './Terminal';
 import { LogViewer } from './LogViewer';
+import { RestrictedActionModal } from './RestrictedActionModal';
 
-export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => {
+export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate, user }) => {
     const [systems, setSystems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTerminalSystem, setActiveTerminalSystem] = useState(null);
     const [activeLogSystem, setActiveLogSystem] = useState(null);
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     const filteredSystems = systems.filter(system =>
         system.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,6 +42,14 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
         }
     };
 
+    const handleOpenTerminal = (system) => {
+        if (user?.role !== 'admin') {
+            setShowRestrictedModal(true);
+            return;
+        }
+        setActiveTerminalSystem(system);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex items-center justify-center">
@@ -65,11 +75,10 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
         );
     }
 
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage={currentPage} onNavigate={onNavigate} showSystemLinks={false} />
+            <Sidebar currentPage={currentPage} onNavigate={onNavigate} showSystemLinks={false} user={user} />
+            <RestrictedActionModal isOpen={showRestrictedModal} onClose={() => setShowRestrictedModal(false)} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">
@@ -112,7 +121,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate }) => 
                                     apiUrl: system.api_url // Map database field to frontend field
                                 }}
                                 onClick={onSelectSystem}
-                                onOpenTerminal={() => setActiveTerminalSystem(system)}
+                                onOpenTerminal={() => handleOpenTerminal(system)}
                                 onOpenLogs={() => setActiveLogSystem(system)}
                             />
                         ))}

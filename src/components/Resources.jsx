@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
 import { Cpu, Box, Activity, Server, XCircle } from 'lucide-react';
+import { RestrictedActionModal } from './RestrictedActionModal';
 
-export const Resources = ({ system, onNavigate }) => {
+export const Resources = ({ system, onNavigate, user }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     useEffect(() => {
         if (system) {
@@ -30,6 +32,11 @@ export const Resources = ({ system, onNavigate }) => {
     };
 
     const handleKillProcess = async (pid, name) => {
+        if (user?.role !== 'admin') {
+            setShowRestrictedModal(true);
+            return;
+        }
+
         if (!window.confirm(`Are you sure you want to kill process "${name}" (PID: ${pid})?`)) {
             return;
         }
@@ -49,7 +56,8 @@ export const Resources = ({ system, onNavigate }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage="resources" onNavigate={onNavigate} />
+            <Sidebar currentPage="resources" onNavigate={onNavigate} user={user} />
+            <RestrictedActionModal isOpen={showRestrictedModal} onClose={() => setShowRestrictedModal(false)} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">

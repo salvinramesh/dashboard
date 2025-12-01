@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
 import { Play, Square, RotateCw, Box, Search, Terminal } from 'lucide-react';
+import { RestrictedActionModal } from './RestrictedActionModal';
 
-export const Docker = ({ system, onNavigate }) => {
+export const Docker = ({ system, onNavigate, user }) => {
     const [containers, setContainers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
     const [actionLoading, setActionLoading] = useState(null);
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     useEffect(() => {
         if (system) {
@@ -34,6 +36,11 @@ export const Docker = ({ system, onNavigate }) => {
     };
 
     const handleContainerAction = async (containerId, action) => {
+        if (user?.role !== 'admin') {
+            setShowRestrictedModal(true);
+            return;
+        }
+
         try {
             setActionLoading(containerId);
             await systemsAPI.controlContainer(system.id, containerId, action);
@@ -56,7 +63,8 @@ export const Docker = ({ system, onNavigate }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage="docker" onNavigate={onNavigate} />
+            <Sidebar currentPage="docker" onNavigate={onNavigate} user={user} />
+            <RestrictedActionModal isOpen={showRestrictedModal} onClose={() => setShowRestrictedModal(false)} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">

@@ -75,4 +75,54 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// PUT /api/users/:id - Update user (password/role)
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { password, role } = req.body;
+
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can update users' });
+    }
+
+    try {
+        // First check if user exists
+        const userCheck = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let query = 'UPDATE users SET ';
+        const values = [];
+        let paramCount = 1;
+
+        if (password) {
+            const passwordHash = await bcrypt.hash(password, 10);
+            query += `password_hash = $${paramCount}, `;
+            values.push(passwordHash);
+            paramCount++;
+        }
+
+        if (role) {
+            query += `role = $${paramCount}, `;
+            values.push(role);
+            paramCount++;
+        }
+
+        // Remove trailing comma and space
+        query = query.slice(0, -2);
+        query += ` WHERE id = $${paramCount} RETURNING id, username, role, created_at`;
+        values.push(id);
+
+        if (values.length === 1) { // Only ID is in values, meaning no fields to update
+            return res.json(userCheck.rows[0]);
+        }
+
+        const result = await pool.query(query, values);
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+});
+
 module.exports = router;

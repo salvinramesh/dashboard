@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
 import { Play, Square, RotateCw, Search, ServerCog } from 'lucide-react';
+import { RestrictedActionModal } from './RestrictedActionModal';
 
-export const Services = ({ system, onNavigate }) => {
+export const Services = ({ system, onNavigate, user }) => {
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
     const [actionLoading, setActionLoading] = useState(null);
+    const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
     useEffect(() => {
         if (system) {
@@ -31,6 +33,11 @@ export const Services = ({ system, onNavigate }) => {
     };
 
     const handleServiceAction = async (name, action) => {
+        if (user?.role !== 'admin') {
+            setShowRestrictedModal(true);
+            return;
+        }
+
         try {
             setActionLoading(name);
             await systemsAPI.controlService(system.id, name, action);
@@ -53,7 +60,8 @@ export const Services = ({ system, onNavigate }) => {
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
-            <Sidebar currentPage="services" onNavigate={onNavigate} />
+            <Sidebar currentPage="services" onNavigate={onNavigate} user={user} />
+            <RestrictedActionModal isOpen={showRestrictedModal} onClose={() => setShowRestrictedModal(false)} />
 
             <div className="pl-20 lg:pl-64 transition-all duration-300">
                 <main className="p-8 lg:p-12 max-w-7xl mx-auto">

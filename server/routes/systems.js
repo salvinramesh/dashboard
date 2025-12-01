@@ -338,6 +338,9 @@ router.get('/:id/history', async (req, res) => {
 
 // Proxy POST /api/systems/:id/processes/:pid/kill
 router.post('/:id/processes/:pid/kill', async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can kill processes' });
+    }
     try {
         const { id, pid } = req.params;
         const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
@@ -418,6 +421,9 @@ router.get('/:id/services', async (req, res) => {
 
 // Proxy POST /api/systems/:id/services/:name/:action
 router.post('/:id/services/:name/:action', async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can manage services' });
+    }
     try {
         const { id, name, action } = req.params;
         const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
@@ -459,6 +465,9 @@ router.post('/:id/services/:name/:action', async (req, res) => {
 
 // Proxy POST /api/systems/:id/docker/:containerId/:action
 router.post('/:id/docker/:containerId/:action', async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can manage containers' });
+    }
     try {
         const { id, containerId, action } = req.params;
         const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);

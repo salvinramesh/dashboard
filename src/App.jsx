@@ -61,23 +61,23 @@ function App() {
   return (
     <ErrorBoundary>
       {currentView === 'overview' ? (
-        <SystemsOverview onSelectSystem={handleSelectSystem} onNavigate={handleNavigate} currentPage={currentView} />
+        <SystemsOverview onSelectSystem={handleSelectSystem} onNavigate={handleNavigate} currentPage={currentView} user={user} />
       ) : currentView === 'detail' ? (
-        <Dashboard system={selectedSystem} onBack={handleBackToOverview} onNavigate={handleNavigate} currentPage={currentView} />
+        <Dashboard system={selectedSystem} onBack={handleBackToOverview} onNavigate={handleNavigate} currentPage={currentView} user={user} />
       ) : currentView === 'resources' ? (
-        <Resources system={selectedSystem} onNavigate={handleNavigate} />
+        <Resources system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'security' ? (
-        <Security system={selectedSystem} onNavigate={handleNavigate} />
+        <Security system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'services' ? (
-        <Services system={selectedSystem} onNavigate={handleNavigate} />
+        <Services system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'docker' ? (
-        <Docker system={selectedSystem} onNavigate={handleNavigate} />
+        <Docker system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'files' ? (
-        <FileManager system={selectedSystem} onNavigate={handleNavigate} />
+        <FileManager system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'network' ? (
-        <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
+        <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
       ) : currentView === 'users' ? (
-        <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
+        <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
       ) : currentView === 'settings' ? (
         <Settings
           onBack={() => setCurrentView('overview')}
@@ -85,6 +85,7 @@ function App() {
           currentPage={currentView}
           showSystemLinks={!!selectedSystem}
           onLogout={handleLogout}
+          user={user}
         />
       ) : null}
     </ErrorBoundary>
