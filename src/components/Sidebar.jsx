@@ -13,66 +13,68 @@ export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                 </div>
             </div>
 
-            <nav className="flex flex-col gap-2 w-full">
-                <NavItem
-                    icon={<LayoutDashboard size={20} />}
-                    label="Dashboard"
-                    active={currentPage === 'overview' || currentPage === 'detail'}
-                    onClick={() => onNavigate?.('overview')}
-                />
-                {showSystemLinks && (
-                    <>
-                        <NavItem
-                            icon={<Server size={20} />}
-                            label="Resources"
-                            active={currentPage === 'resources'}
-                            onClick={() => onNavigate?.('resources')}
-                        />
-                        <NavItem
-                            icon={<Shield size={20} />}
-                            label="Security"
-                            active={currentPage === 'security'}
-                            onClick={() => onNavigate?.('security')}
-                        />
-                        <NavItem
-                            icon={<ServerCog size={20} />}
-                            label="Services"
-                            active={currentPage === 'services'}
-                            onClick={() => onNavigate?.('services')}
-                        />
-                        <NavItem
-                            icon={<Box size={20} />}
-                            label="Docker"
-                            active={currentPage === 'docker'}
-                            onClick={() => onNavigate?.('docker')}
-                        />
-                        <NavItem
-                            icon={<HardDrive size={20} />}
-                            label="Files"
-                            active={currentPage === 'files'}
-                            onClick={() => onNavigate?.('files')}
-                        />
-                    </>
-                )}
-                <NavItem
-                    icon={<Network size={20} />}
-                    label="Network"
-                    active={currentPage === 'network'}
-                    onClick={() => onNavigate?.('network')}
-                />
-                <NavItem
-                    icon={<Users size={20} />}
-                    label="Users"
-                    active={currentPage === 'users'}
-                    onClick={() => onNavigate?.('users')}
-                />
-                <NavItem
-                    icon={<Settings size={20} />}
-                    label="Settings"
-                    active={currentPage === 'settings'}
-                    onClick={() => onNavigate?.('settings')}
-                />
-            </nav>
+            <div className="flex-1 w-full overflow-y-auto custom-scrollbar min-h-0">
+                <nav className="flex flex-col gap-2 w-full px-2">
+                    <NavItem
+                        icon={<LayoutDashboard size={20} />}
+                        label="Dashboard"
+                        active={currentPage === 'overview' || currentPage === 'detail'}
+                        onClick={() => onNavigate?.('overview')}
+                    />
+                    {showSystemLinks && (
+                        <>
+                            <NavItem
+                                icon={<Server size={20} />}
+                                label="Resources"
+                                active={currentPage === 'resources'}
+                                onClick={() => onNavigate?.('resources')}
+                            />
+                            <NavItem
+                                icon={<Shield size={20} />}
+                                label="Security"
+                                active={currentPage === 'security'}
+                                onClick={() => onNavigate?.('security')}
+                            />
+                            <NavItem
+                                icon={<ServerCog size={20} />}
+                                label="Services"
+                                active={currentPage === 'services'}
+                                onClick={() => onNavigate?.('services')}
+                            />
+                            <NavItem
+                                icon={<Box size={20} />}
+                                label="Docker"
+                                active={currentPage === 'docker'}
+                                onClick={() => onNavigate?.('docker')}
+                            />
+                            <NavItem
+                                icon={<HardDrive size={20} />}
+                                label="Files"
+                                active={currentPage === 'files'}
+                                onClick={() => onNavigate?.('files')}
+                            />
+                        </>
+                    )}
+                    <NavItem
+                        icon={<Network size={20} />}
+                        label="Network"
+                        active={currentPage === 'network'}
+                        onClick={() => onNavigate?.('network')}
+                    />
+                    <NavItem
+                        icon={<Users size={20} />}
+                        label="Users"
+                        active={currentPage === 'users'}
+                        onClick={() => onNavigate?.('users')}
+                    />
+                    <NavItem
+                        icon={<Settings size={20} />}
+                        label="Settings"
+                        active={currentPage === 'settings'}
+                        onClick={() => onNavigate?.('settings')}
+                    />
+                </nav>
+            </div>
 
             <div className="mt-auto w-full px-2 hidden lg:block">
                 <div className="bg-zinc-900/50 rounded-xl p-4 border border-zinc-800">
