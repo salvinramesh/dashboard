@@ -278,6 +278,19 @@ const checkForUpdates = async () => {
                     const newCode = await downloadResponse.text();
                     fs.writeFileSync('index.js.new', newCode);
 
+                    // Update package.json version
+                    try {
+                        const packageJsonPath = './package.json';
+                        if (fs.existsSync(packageJsonPath)) {
+                            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                            packageJson.version = remoteVersion;
+                            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+                            console.log(`Updated package.json to version ${remoteVersion}`);
+                        }
+                    } catch (err) {
+                        console.error('Failed to update package.json:', err);
+                    }
+
                     // Atomic rename
                     fs.renameSync('index.js.new', 'index.js');
 
