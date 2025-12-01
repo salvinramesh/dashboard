@@ -252,7 +252,7 @@ app.get('/api/security', authenticateToken, async (req, res) => {
         console.error('Error fetching security info:', error);
         res.status(500).json({ error: 'Failed to fetch security info' });
     }
-}
+});
 
 
 // Service Management Endpoints
