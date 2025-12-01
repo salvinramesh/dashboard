@@ -320,7 +320,7 @@ app.post('/api/services/:name/:action', authenticateToken, async (req, res) => {
 
     if (isWin) {
         const psAction = action === 'start' ? 'Start-Service' : action === 'stop' ? 'Stop-Service' : 'Restart-Service';
-        cmd = `powershell "${psAction} -Name '${name}' -Force"`;
+        cmd = `powershell "${psAction} -Name '${name}' -Force -ErrorAction Stop"`;
     } else {
         cmd = `systemctl ${action} ${name}`;
     }

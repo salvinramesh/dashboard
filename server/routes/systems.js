@@ -434,7 +434,7 @@ router.post('/:id/services/:name/:action', async (req, res) => {
 
         const { api_url } = result.rows[0];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         const token = getProxyToken();
 
         try {
