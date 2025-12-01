@@ -4,6 +4,9 @@ import { SystemsOverview } from './components/SystemsOverview';
 import { Settings } from './components/Settings';
 import { Resources } from './components/Resources';
 import { Security } from './components/Security';
+import { Services } from './components/Services';
+import { Docker } from './components/Docker';
+import { FileManager } from './components/FileManager';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
@@ -65,6 +68,12 @@ function App() {
         <Resources system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'security' ? (
         <Security system={selectedSystem} onNavigate={handleNavigate} />
+      ) : currentView === 'services' ? (
+        <Services system={selectedSystem} onNavigate={handleNavigate} />
+      ) : currentView === 'docker' ? (
+        <Docker system={selectedSystem} onNavigate={handleNavigate} />
+      ) : currentView === 'files' ? (
+        <FileManager system={selectedSystem} onNavigate={handleNavigate} />
       ) : currentView === 'network' ? (
         <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} />
       ) : currentView === 'users' ? (

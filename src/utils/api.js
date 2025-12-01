@@ -155,6 +155,83 @@ export const systemsAPI = {
             throw new Error(error.error || 'Failed to delete system');
         }
         return response.json();
+    },
+
+    // Kill process
+    killProcess: async (id, pid) => {
+        const response = await fetch(`${API_BASE}/${id}/processes/${pid}/kill`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to kill process');
+        }
+        return response.json();
+    },
+
+    // Get services
+    getServices: async (id) => {
+        const response = await fetch(`${API_BASE}/${id}/services`, {
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to fetch services');
+        return response.json();
+    },
+
+    // Control service
+    controlService: async (id, name, action) => {
+        const response = await fetch(`${API_BASE}/${id}/services/${name}/${action}`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to control service');
+        }
+        return response.json();
+    },
+
+    // Control Docker container
+    controlContainer: async (id, containerId, action) => {
+        const response = await fetch(`${API_BASE}/${id}/docker/${containerId}/${action}`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to control container');
+        }
+        return response.json();
+    },
+
+    // List files
+    listFiles: async (id, path) => {
+        const url = new URL(`${window.location.origin}${API_BASE}/${id}/files/list`);
+        if (path) url.searchParams.append('path', path);
+
+        const response = await fetch(url, {
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to list files');
+        return response.json();
+    },
+
+    // Download file URL helper
+    getFileDownloadUrl: (id, path) => {
+        // We can't easily add headers to a direct link, so we might need a proxy token in the URL 
+        // OR we use the fetch-blob method.
+        // For simplicity, let's use the fetch method in the component to trigger download.
+        return `${API_BASE}/${id}/files/download?path=${encodeURIComponent(path)}`;
+    },
+
+    // Download file (blob)
+    downloadFile: async (id, path) => {
+        const response = await fetch(`${API_BASE}/${id}/files/download?path=${encodeURIComponent(path)}`, {
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to download file');
+        return response.blob();
     }
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network } from 'lucide-react';
+import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network, ServerCog, Box, HardDrive } from 'lucide-react';
 
 export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
@@ -33,6 +33,24 @@ export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                             label="Security"
                             active={currentPage === 'security'}
                             onClick={() => onNavigate?.('security')}
+                        />
+                        <NavItem
+                            icon={<ServerCog size={20} />}
+                            label="Services"
+                            active={currentPage === 'services'}
+                            onClick={() => onNavigate?.('services')}
+                        />
+                        <NavItem
+                            icon={<Box size={20} />}
+                            label="Docker"
+                            active={currentPage === 'docker'}
+                            onClick={() => onNavigate?.('docker')}
+                        />
+                        <NavItem
+                            icon={<HardDrive size={20} />}
+                            label="Files"
+                            active={currentPage === 'files'}
+                            onClick={() => onNavigate?.('files')}
                         />
                     </>
                 )}

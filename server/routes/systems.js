@@ -336,4 +336,283 @@ router.get('/:id/history', async (req, res) => {
     }
 });
 
+// Proxy POST /api/systems/:id/processes/:pid/kill
+router.post('/:id/processes/:pid/kill', async (req, res) => {
+    try {
+        const { id, pid } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/processes/${pid}/kill`, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error killing process on ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in process kill proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy GET /api/systems/:id/services
+router.get('/:id/services', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/services`, {
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error fetching services from ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in services proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy POST /api/systems/:id/services/:name/:action
+router.post('/:id/services/:name/:action', async (req, res) => {
+    try {
+        const { id, name, action } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/services/${name}/${action}`, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error controlling service on ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in service control proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy POST /api/systems/:id/docker/:containerId/:action
+router.post('/:id/docker/:containerId/:action', async (req, res) => {
+    try {
+        const { id, containerId, action } = req.params;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const token = getProxyToken();
+
+        try {
+            const response = await fetch(`${api_url}/api/docker/${containerId}/${action}`, {
+                method: 'POST',
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error controlling docker container on ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in docker control proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy GET /api/systems/:id/files/list
+router.get('/:id/files/list', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { path: dirPath } = req.query;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const token = getProxyToken();
+
+        try {
+            const url = new URL(`${api_url}/api/files/list`);
+            if (dirPath) url.searchParams.append('path', dirPath);
+
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            res.json(data);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error(`Error listing files from ${api_url}:`, fetchError);
+            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        }
+    } catch (error) {
+        console.error('Error in file list proxy:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Proxy GET /api/systems/:id/files/download
+router.get('/:id/files/download', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { path: filePath } = req.query;
+        const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'System not found' });
+        }
+
+        const { api_url } = result.rows[0];
+        const token = getProxyToken();
+
+        // We don't use fetch here because we want to pipe the stream directly
+        // But we need to add the Authorization header.
+        // Since we are proxying a download, we can fetch it and pipe the response body.
+
+        try {
+            const url = new URL(`${api_url}/api/files/download`);
+            url.searchParams.append('path', filePath);
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Remote system returned ${response.status}`);
+            }
+
+            // Forward headers
+            res.setHeader('Content-Disposition', response.headers.get('content-disposition') || `attachment; filename="${filePath.split('/').pop()}"`);
+            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+
+            // Pipe the web stream to the express response
+            const reader = response.body.getReader();
+            const stream = new ReadableStream({
+                start(controller) {
+                    return pump();
+                    function pump() {
+                        return reader.read().then(({ done, value }) => {
+                            if (done) {
+                                controller.close();
+                                return;
+                            }
+                            controller.enqueue(value);
+                            return pump();
+                        });
+                    }
+                }
+            });
+
+            // Node 18+ fetch returns a web stream, but res is a Node stream.
+            // We can convert or just iterate.
+            // Simpler approach for Node environment:
+            const { Readable } = require('stream');
+            // @ts-ignore
+            Readable.fromWeb(response.body).pipe(res);
+
+        } catch (fetchError) {
+            console.error(`Error downloading file from ${api_url}:`, fetchError);
+            if (!res.headersSent) {
+                res.status(502).json({ error: 'Failed to download file', details: fetchError.message });
+            }
+        }
+    } catch (error) {
+        console.error('Error in file download proxy:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+});
+
 module.exports = router;

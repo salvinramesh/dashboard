@@ -252,6 +252,182 @@ app.get('/api/security', authenticateToken, async (req, res) => {
         console.error('Error fetching security info:', error);
         res.status(500).json({ error: 'Failed to fetch security info' });
     }
+}
+});
+
+// Service Management Endpoints
+app.get('/api/services', authenticateToken, async (req, res) => {
+    try {
+        const isWin = os.platform() === 'win32';
+        const cmd = isWin
+            ? 'powershell "Get-Service | Select-Object Name, DisplayName, Status, StartType | ConvertTo-Json"'
+            : 'systemctl list-units --type=service --all --no-pager --no-legend --output=json'; // JSON output requires newer systemd, fallback to parsing text if needed
+
+        // Fallback for older systemd that doesn't support json output
+        const linuxCmd = 'systemctl list-units --type=service --all --no-pager --no-legend';
+
+        const { exec } = require('child_process');
+
+        exec(isWin ? cmd : linuxCmd, { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
+            if (error) {
+                console.error('Failed to list services:', error);
+                return res.status(500).json({ error: 'Failed to list services' });
+            }
+
+            let services = [];
+            if (isWin) {
+                try {
+                    services = JSON.parse(stdout).map(s => ({
+                        name: s.Name,
+                        displayName: s.DisplayName,
+                        status: s.Status === 4 ? 'running' : 'stopped', // 4 is Running in PowerShell enum
+                        startType: s.StartType
+                    }));
+                } catch (e) {
+                    console.error('Failed to parse Windows services:', e);
+                    return res.status(500).json({ error: 'Failed to parse services' });
+                }
+            } else {
+                // Parse Linux text output
+                // Format: unit load active sub description
+                services = stdout.split('\n').filter(line => line.trim()).map(line => {
+                    const parts = line.trim().split(/\s+/);
+                    return {
+                        name: parts[0],
+                        displayName: parts.slice(4).join(' '),
+                        status: parts[2] === 'active' ? 'running' : 'stopped',
+                        subState: parts[3]
+                    };
+                });
+            }
+
+            res.json(services);
+        });
+    } catch (error) {
+        console.error('Error fetching services:', error);
+        res.status(500).json({ error: 'Failed to fetch services' });
+    }
+});
+
+app.post('/api/services/:name/:action', authenticateToken, async (req, res) => {
+    const { name, action } = req.params;
+    if (!['start', 'stop', 'restart'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    const isWin = os.platform() === 'win32';
+    let cmd;
+
+    if (isWin) {
+        const psAction = action === 'start' ? 'Start-Service' : action === 'stop' ? 'Stop-Service' : 'Restart-Service';
+        cmd = `powershell "${psAction} -Name '${name}' -Force"`;
+    } else {
+        cmd = `systemctl ${action} ${name}`;
+    }
+
+    const { exec } = require('child_process');
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Failed to ${action} service ${name}:`, stderr || error.message);
+            return res.status(500).json({ error: `Failed to ${action} service` });
+        }
+        res.json({ status: 'success', message: `Service ${name} ${action}ed` });
+    });
+});
+
+    });
+});
+
+// Docker Management Endpoints
+app.post('/api/docker/:id/:action', authenticateToken, async (req, res) => {
+    const { id, action } = req.params;
+    if (!['start', 'stop', 'restart'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    const cmd = `docker ${action} ${id}`;
+    const { exec } = require('child_process');
+
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Failed to ${action} container ${id}:`, stderr || error.message);
+            return res.status(500).json({ error: `Failed to ${action} container` });
+        }
+        res.json({ status: 'success', message: `Container ${id} ${action}ed` });
+    });
+});
+
+    });
+});
+
+// File Management Endpoints
+app.get('/api/files/list', authenticateToken, async (req, res) => {
+    const dirPath = req.query.path || (os.platform() === 'win32' ? 'C:\\' : '/');
+
+    try {
+        const fs = require('fs');
+        const path = require('path');
+
+        if (!fs.existsSync(dirPath)) {
+            return res.status(404).json({ error: 'Path not found' });
+        }
+
+        const items = fs.readdirSync(dirPath, { withFileTypes: true });
+        const fileList = items.map(item => {
+            try {
+                const stats = fs.statSync(path.join(dirPath, item.name));
+                return {
+                    name: item.name,
+                    isDirectory: item.isDirectory(),
+                    size: stats.size,
+                    modified: stats.mtime
+                };
+            } catch (e) {
+                return null; // Skip files we can't read
+            }
+        }).filter(Boolean)
+            .sort((a, b) => {
+                // Directories first, then files
+                if (a.isDirectory === b.isDirectory) {
+                    return a.name.localeCompare(b.name);
+                }
+                return a.isDirectory ? -1 : 1;
+            });
+
+        res.json({
+            path: dirPath,
+            items: fileList
+        });
+    } catch (error) {
+        console.error('Failed to list files:', error);
+        res.status(500).json({ error: 'Failed to list files: ' + error.message });
+    }
+});
+
+app.get('/api/files/download', authenticateToken, (req, res) => {
+    const filePath = req.query.path;
+    if (!filePath) {
+        return res.status(400).json({ error: 'Path is required' });
+    }
+
+    try {
+        const fs = require('fs');
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        res.download(filePath, (err) => {
+            if (err) {
+                console.error('Error downloading file:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Failed to download file' });
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to download file:', error);
+        res.status(500).json({ error: 'Failed to download file' });
+    }
 });
 
 // Auto-Update Logic

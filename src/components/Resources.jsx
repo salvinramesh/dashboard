@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { systemsAPI } from '../utils/api';
-import { Cpu, Box, Activity, Server } from 'lucide-react';
+import { Cpu, Box, Activity, Server, XCircle } from 'lucide-react';
 
 export const Resources = ({ system, onNavigate }) => {
     const [data, setData] = useState(null);
@@ -26,6 +26,22 @@ export const Resources = ({ system, onNavigate }) => {
             setError('Failed to load resources');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleKillProcess = async (pid, name) => {
+        if (!window.confirm(`Are you sure you want to kill process "${name}" (PID: ${pid})?`)) {
+            return;
+        }
+
+        try {
+            await systemsAPI.killProcess(system.id, pid);
+            // Optimistically remove from UI or reload
+            loadResources();
+            alert(`Process ${name} killed successfully.`);
+        } catch (err) {
+            console.error('Failed to kill process:', err);
+            alert(`Failed to kill process: ${err.message}`);
         }
     };
 
@@ -102,6 +118,7 @@ export const Resources = ({ system, onNavigate }) => {
                                                 <th className="p-4">User</th>
                                                 <th className="p-4 text-right">CPU %</th>
                                                 <th className="p-4 text-right">Mem %</th>
+                                                <th className="p-4 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-800">
@@ -112,6 +129,15 @@ export const Resources = ({ system, onNavigate }) => {
                                                     <td className="p-4 text-zinc-400">{proc.user}</td>
                                                     <td className="p-4 text-right font-mono text-blue-400">{proc.cpu.toFixed(1)}%</td>
                                                     <td className="p-4 text-right font-mono text-purple-400">{proc.mem.toFixed(1)}%</td>
+                                                    <td className="p-4 text-right">
+                                                        <button
+                                                            onClick={() => handleKillProcess(proc.pid, proc.name)}
+                                                            className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-1 rounded transition-colors"
+                                                            title="Kill Process"
+                                                        >
+                                                            <XCircle size={18} />
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
