@@ -30,6 +30,16 @@ function Install-Agent {
 
     Write-Host "Installing Agent..." -ForegroundColor Yellow
 
+    # 0. Ensure .env is in the dist folder (Critical for GitHub Actions builds)
+    $EnvSource = Join-Path $ScriptPath ".env"
+    $EnvDest = Join-Path $ScriptPath "dist\.env"
+    if (Test-Path $EnvSource) {
+        Copy-Item -Path $EnvSource -Destination $EnvDest -Force
+        Write-Host "Copied .env configuration to dist folder."
+    } else {
+        Write-Host "Warning: .env file not found in $ScriptPath. Agent might not connect." -ForegroundColor Red
+    }
+
     # 1. Create VBScript wrapper for hidden execution
     # We must set the CurrentDirectory so the agent can find the .env file
     $VbsContent = "Set WshShell = CreateObject(""WScript.Shell"")`nWshShell.CurrentDirectory = ""$(Join-Path $ScriptPath 'dist')""`nWshShell.Run chr(34) & ""$ExePath"" & chr(34), 0`nSet WshShell = Nothing"
