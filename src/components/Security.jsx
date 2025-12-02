@@ -84,40 +84,38 @@ export const Security = ({ system, onNavigate }) => {
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-zinc-900 text-zinc-500 uppercase font-bold text-xs">
                                             <tr>
-                                                <th className="p-4">Protocol</th>
-                                                <th className="p-4">Local Address</th>
-                                                <th className="p-4">Remote Address</th>
-                                                <th className="p-4">State</th>
+                                                <th className="p-4 w-24">Protocol</th>
+                                                <th className="p-4 w-1/4">Local Address</th>
+                                                <th className="p-4 w-1/4">Remote Address</th>
+                                                <th className="p-4 w-32">State</th>
                                                 <th className="p-4">Process</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-800">
-                                            <tbody className="divide-y divide-zinc-800">
-                                                {data.connections && Array.isArray(data.connections) && data.connections.length > 0 ? (
-                                                    data.connections.map((conn, i) => (
-                                                        <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
-                                                            <td className="p-4 font-mono text-zinc-400 uppercase">{conn.protocol}</td>
-                                                            <td className="p-4 font-mono text-white">{conn.localAddress}:{conn.localPort}</td>
-                                                            <td className="p-4 font-mono text-zinc-500">{conn.peerAddress}:{conn.peerPort}</td>
-                                                            <td className="p-4">
-                                                                <span className={`px-2 py-1 rounded text-xs font-bold ${conn.state === 'LISTEN' ? 'bg-blue-500/10 text-blue-500' :
-                                                                    conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
-                                                                        'bg-zinc-800 text-zinc-500'
-                                                                    }`}>
-                                                                    {conn.state}
-                                                                </span>
-                                                            </td>
-                                                            <td className="p-4 text-zinc-400">{conn.process || '-'}</td>
-                                                        </tr>
-                                                    ))
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan="5" className="p-8 text-center text-zinc-500">
-                                                            No active connections found
+                                            {data.connections && Array.isArray(data.connections) && data.connections.length > 0 ? (
+                                                data.connections.map((conn, i) => (
+                                                    <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
+                                                        <td className="p-4 font-mono text-zinc-400 uppercase">{conn.protocol}</td>
+                                                        <td className="p-4 font-mono text-white">{conn.localAddress}:{conn.localPort}</td>
+                                                        <td className="p-4 font-mono text-zinc-500">{conn.peerAddress}:{conn.peerPort}</td>
+                                                        <td className="p-4">
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${conn.state === 'LISTEN' ? 'bg-blue-500/10 text-blue-500' :
+                                                                conn.state === 'ESTABLISHED' ? 'bg-green-500/10 text-green-500' :
+                                                                    'bg-zinc-800 text-zinc-500'
+                                                                }`}>
+                                                                {conn.state}
+                                                            </span>
                                                         </td>
+                                                        <td className="p-4 text-zinc-400">{conn.process || '-'}</td>
                                                     </tr>
-                                                )}
-                                            </tbody>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="5" className="p-8 text-center text-zinc-500">
+                                                        No active connections found
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
