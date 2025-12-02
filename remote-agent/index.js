@@ -3,6 +3,27 @@ const express = require('express');
 const si = require('systeminformation');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const readline = require('readline');
+
+// Prevent instant close on error
+const waitAndExit = (code = 1) => {
+    console.log('\nPress any key to exit...');
+    if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+    process.stdin.on('data', () => process.exit(code));
+};
+
+process.on('uncaughtException', (err) => {
+    console.error('CRITICAL ERROR:', err);
+    waitAndExit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+    waitAndExit(1);
+});
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -685,4 +706,7 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
     console.log(`Remote Agent running on port ${PORT}`);
+    console.log(`- ID: ${process.env.AGENT_ID || 'Not set'}`);
+    console.log(`- Name: ${process.env.AGENT_NAME || 'Not set'}`);
+    console.log(`- Server: ${process.env.DASHBOARD_URL || 'Not set'}`);
 });
