@@ -4,7 +4,7 @@ import { colorThemes } from '../config/systems';
 import { systemsAPI, generateId } from '../utils/api';
 import { isHexColor } from '../utils/colors';
 import {
-    Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut, Bell, BellOff, Search, ChevronDown, Check
+    Settings as SettingsIcon, Plus, Edit2, Trash2, Save, X, LogOut, Bell, BellOff, Search, ChevronDown, Check, Download
 } from 'lucide-react';
 import { iconMap, getIcon } from '../utils/icons';
 
@@ -24,12 +24,25 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         color: 'blue',
         icon: 'Server'
     });
+    const [installPrompt, setInstallPrompt] = useState(null);
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
     // Fetch systems on mount
     useEffect(() => {
         loadSystems();
+
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            window.deferredPrompt = e;
+            setInstallPrompt(e); // Trigger re-render
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
     }, []);
 
     const loadSystems = async () => {
@@ -197,7 +210,25 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                     <p className="text-zinc-500 text-sm mt-1">Manage your monitored systems</p>
                                 </div>
                             </div>
+
                             <div className="flex gap-3">
+                                {window.deferredPrompt && (
+                                    <button
+                                        onClick={async () => {
+                                            const promptEvent = window.deferredPrompt;
+                                            if (!promptEvent) return;
+                                            promptEvent.prompt();
+                                            const { outcome } = await promptEvent.userChoice;
+                                            if (outcome === 'accepted') {
+                                                window.deferredPrompt = null;
+                                            }
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors border border-zinc-700"
+                                    >
+                                        <Download size={20} />
+                                        Install App
+                                    </button>
+                                )}
                                 {currentUser.role === 'admin' && (
                                     <button
                                         onClick={handleAddNew}
@@ -474,6 +505,6 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                     )}
                 </main>
             </div>
-        </div>
+        </div >
     );
 };

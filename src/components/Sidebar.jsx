@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network, ServerCog, Box, HardDrive } from 'lucide-react';
+import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network, ServerCog, Box, HardDrive, UserCircle } from 'lucide-react';
 
 export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
@@ -66,6 +66,12 @@ export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                         label="Users"
                         active={currentPage === 'users'}
                         onClick={() => onNavigate?.('users')}
+                    />
+                    <NavItem
+                        icon={<UserCircle size={20} />}
+                        label="My Profile"
+                        active={currentPage === 'profile'}
+                        onClick={() => onNavigate?.('profile')}
                     />
                     <NavItem
                         icon={<Settings size={20} />}

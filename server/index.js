@@ -32,7 +32,10 @@ const authenticateToken = require('./middleware/auth');
 
 const agentRoutes = require('./routes/agent');
 
+const auth2faRouter = require('./routes/auth-2fa');
+
 app.use('/api/auth', authRouter);
+app.use('/api/auth/2fa', auth2faRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/systems', authenticateToken, systemsRouter);
 app.use('/api/agent', agentRoutes);

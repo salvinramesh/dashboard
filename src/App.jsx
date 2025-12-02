@@ -10,6 +10,7 @@ import { FileManager } from './components/FileManager';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
+import UserProfile from './components/UserProfile';
 import { NetworkTraffic } from './components/NetworkTraffic';
 
 function App() {
@@ -78,6 +79,8 @@ function App() {
         <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
       ) : currentView === 'users' ? (
         <UserManagement onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
+      ) : currentView === 'profile' ? (
+        <UserProfile onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
       ) : currentView === 'settings' ? (
         <Settings
           onBack={() => setCurrentView('overview')}

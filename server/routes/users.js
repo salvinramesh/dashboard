@@ -78,7 +78,7 @@ router.delete('/:id', async (req, res) => {
 // PUT /api/users/:id - Update user (password/role)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { password, role } = req.body;
+    const { username, password, role } = req.body;
 
     if (req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Only admins can update users' });
@@ -91,9 +91,23 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Check if new username already exists
+        if (username && username !== userCheck.rows[0].username) {
+            const usernameCheck = await pool.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, id]);
+            if (usernameCheck.rows.length > 0) {
+                return res.status(409).json({ error: 'Username already exists' });
+            }
+        }
+
         let query = 'UPDATE users SET ';
         const values = [];
         let paramCount = 1;
+
+        if (username) {
+            query += `username = $${paramCount}, `;
+            values.push(username);
+            paramCount++;
+        }
 
         if (password) {
             const passwordHash = await bcrypt.hash(password, 10);
