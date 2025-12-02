@@ -31,7 +31,8 @@ function Install-Agent {
     Write-Host "Installing Agent..." -ForegroundColor Yellow
 
     # 1. Create VBScript wrapper for hidden execution
-    $VbsContent = "Set WshShell = CreateObject(""WScript.Shell"")`nWshShell.Run chr(34) & ""$ExePath"" & chr(34), 0`nSet WshShell = Nothing"
+    # We must set the CurrentDirectory so the agent can find the .env file
+    $VbsContent = "Set WshShell = CreateObject(""WScript.Shell"")`nWshShell.CurrentDirectory = ""$(Join-Path $ScriptPath 'dist')""`nWshShell.Run chr(34) & ""$ExePath"" & chr(34), 0`nSet WshShell = Nothing"
     Set-Content -Path $VbsPath -Value $VbsContent
     Write-Host "Created hidden launcher: $VbsPath"
 
