@@ -1,0 +1,38 @@
+name: Build Remote Agent (Windows)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'remote-agent/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: ./remote-agent
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+        cache-dependency-path: remote-agent/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build Executable
+      run: npm run build
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: remote-agent-win
+        path: remote-agent/dist/remote-agent.exe
