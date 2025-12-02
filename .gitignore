@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Allow remote agent executable
+!remote-agent/dist/remote-agent.exe
