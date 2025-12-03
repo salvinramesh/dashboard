@@ -125,10 +125,13 @@ const startMonitoring = (pool) => {
     };
 
     // Initial check
-    checkSystemsAvailability();
-
-    // Start interval
-    setInterval(checkSystemsAvailability, MONITOR_INTERVAL);
+    checkSystemsAvailability().then(() => {
+        setTimeout(function run() {
+            checkSystemsAvailability().finally(() => {
+                setTimeout(run, MONITOR_INTERVAL);
+            });
+        }, MONITOR_INTERVAL);
+    });
 };
 
 module.exports = {

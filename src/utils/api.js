@@ -31,6 +31,10 @@ export const systemsAPI = {
             return response.json();
         } catch (error) {
             clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                console.log('Request aborted:', API_BASE);
+                throw error; // Still throw, but caller should handle
+            }
             throw error;
         }
     },

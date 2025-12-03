@@ -35,6 +35,7 @@ export const SystemsOverview = ({ onSelectSystem, currentPage, onNavigate, user 
             const data = await systemsAPI.getAll();
             setSystems(data);
         } catch (error) {
+            if (error.name === 'AbortError') return;
             console.error('Failed to load systems:', error);
             setError(error.message);
         } finally {

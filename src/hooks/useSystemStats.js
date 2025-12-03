@@ -21,6 +21,7 @@ export const useSystemStats = (systemId) => {
                 setStats(data);
                 setLoading(false);
             } catch (err) {
+                if (err.name === 'AbortError') return;
                 console.error('Failed to initialize stats:', err);
                 setError(err);
                 setLoading(false);

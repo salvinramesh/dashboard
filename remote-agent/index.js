@@ -1,4 +1,5 @@
 console.log('DEBUG: Agent script starting...');
+console.log('VERSION: 2.0.0-FALLBACK-TEST');
 const path = require('path');
 require('dotenv').config({ path: path.join(path.dirname(process.execPath), '.env') });
 const express = require('express');
@@ -88,6 +89,11 @@ const handleUninstall = () => {
 
 // Prevent instant close on error
 const waitAndExit = (code = 1) => {
+    // If running in automated mode (install/uninstall), exit immediately
+    if (process.argv.includes('--install') || process.argv.includes('--uninstall')) {
+        process.exit(code);
+    }
+
     console.log('\nPress any key to exit...');
     if (process.stdin.isTTY) {
         process.stdin.setRawMode(true);
@@ -648,6 +654,7 @@ const startServer = () => {
         let term = null;
 
         socket.on('start-terminal', (data) => {
+            console.log('DEBUG: start-terminal requested');
             // Verify token (simplified for socket)
             const token = data?.token;
             if (!token) {
@@ -662,35 +669,68 @@ const startServer = () => {
                 return;
             }
 
-            if (!pty) {
-                socket.emit('error', 'Terminal not available (missing node-pty)');
-                return;
-            }
-
             const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
 
-            try {
-                term = pty.spawn(shell, [], {
-                    name: 'xterm-color',
-                    cols: 80,
-                    rows: 24,
-                    cwd: process.env.HOME || process.cwd(),
-                    env: process.env
-                });
+            // Force fallback if running in pkg (node-pty doesn't work well in pkg)
+            if (pty && !process.pkg) {
+                try {
+                    term = pty.spawn(shell, [], {
+                        name: 'xterm-color',
+                        cols: 80,
+                        rows: 24,
+                        cwd: process.env.HOME || process.cwd(),
+                        env: process.env
+                    });
 
-                console.log(`Spawned terminal ${term.pid}`);
+                    console.log(`Spawned terminal ${term.pid} (PTY)`);
 
-                term.on('data', (data) => {
-                    socket.emit('output', data);
-                });
+                    term.on('data', (data) => {
+                        socket.emit('output', data);
+                    });
 
-                term.on('exit', (code) => {
-                    console.log(`Terminal ${term?.pid} exited with code ${code}`);
-                    socket.emit('exit', code);
-                });
-            } catch (err) {
-                console.error('Failed to spawn terminal:', err);
-                socket.emit('error', 'Failed to spawn terminal');
+                    term.on('exit', (code) => {
+                        console.log(`Terminal ${term?.pid} exited with code ${code}`);
+                        socket.emit('exit', code);
+                    });
+                } catch (err) {
+                    console.error('Failed to spawn PTY terminal:', err);
+                    socket.emit('error', 'Failed to spawn terminal');
+                }
+            } else {
+                // Fallback to child_process.spawn
+                console.log('Using child_process.spawn for terminal (no PTY)');
+                try {
+                    term = spawn(shell, [], {
+                        cwd: process.env.HOME || process.cwd(),
+                        env: process.env,
+                        shell: true
+                    });
+
+                    term.stdout.on('data', (data) => {
+                        socket.emit('output', data.toString());
+                    });
+
+                    term.stderr.on('data', (data) => {
+                        socket.emit('output', data.toString());
+                    });
+
+                    term.on('close', (code) => {
+                        console.log(`Terminal process exited with code ${code}`);
+                        socket.emit('exit', code);
+                    });
+
+                    // Add a write method to the term object for compatibility
+                    term.write = (data) => {
+                        term.stdin.write(data);
+                    };
+
+                    term.resize = () => { }; // No-op for spawn
+                    term.kill = () => term.kill();
+
+                } catch (err) {
+                    console.error('Failed to spawn fallback terminal:', err);
+                    socket.emit('error', 'Failed to spawn terminal');
+                }
             }
         });
 

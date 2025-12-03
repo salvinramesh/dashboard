@@ -1,0 +1,39 @@
+[Version]
+Class=IExpress
+SEDVersion=3
+[Options]
+PackagePurpose=InstallApp
+ShowInstallProgramWindow=0
+HideExtractAnimation=0
+UseLongFileName=1
+InsideCompressed=0
+CAB_FixedSize=0
+CAB_ResvCodeSigning=0
+RebootMode=N
+InstallPrompt=%InstallPrompt%
+DisplayLicense=%DisplayLicense%
+FinishMessage=%FinishMessage%
+TargetName=%TargetName%
+FriendlyName=%FriendlyName%
+AppLaunched=%AppLaunched%
+PostInstallCmd=%PostInstallCmd%
+AdminQuietInstCmd=%AdminQuietInstCmd%
+UserQuietInstCmd=%UserQuietInstCmd%
+SourceFiles=SourceFiles
+[Strings]
+InstallPrompt=
+DisplayLicense=
+FinishMessage=Installation Complete!
+TargetName=C:\Users\salvin\Pictures\dashboard\remote-agent\dist\ActionFi-Setup.exe
+FriendlyName=ActionFi Agent Installer
+AppLaunched=cmd.exe /c install.cmd
+PostInstallCmd=<None>
+AdminQuietInstCmd=
+UserQuietInstCmd=
+FILE0="remote-agent-win.exe"
+FILE1="install.cmd"
+[SourceFiles]
+SourceFiles0=C:\Users\salvin\Pictures\dashboard\remote-agent\dist\
+[SourceFiles0]
+%FILE0%=
+%FILE1%=
