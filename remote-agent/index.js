@@ -1,9 +1,96 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(path.dirname(process.execPath), '.env') });
 const express = require('express');
 const si = require('systeminformation');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+// --- Logging Setup ---
+const logFile = path.join(process.cwd(), 'agent.log');
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+
+const timestamp = () => new Date().toISOString();
+
+console.log = (...args) => {
+    const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+    logStream.write(`[${timestamp()}] [INFO] ${msg}\n`);
+    originalConsoleLog(...args);
+};
+
+console.error = (...args) => {
+    const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+    logStream.write(`[${timestamp()}] [ERROR] ${msg}\n`);
+    originalConsoleError(...args);
+};
+
+// --- Installation Logic ---
+const handleInstall = () => {
+    try {
+        console.log('Installing agent to startup...');
+        const exePath = process.execPath; // Path to the executable
+        const scriptDir = path.dirname(exePath);
+        const vbsPath = path.join(scriptDir, 'run-hidden.vbs');
+        const shortcutPath = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'ActionFi Agent.lnk');
+
+        // 1. Create VBScript
+        const vbsContent = `Set WshShell = CreateObject("WScript.Shell")
+WshShell.CurrentDirectory = "${scriptDir}"
+WshShell.Run chr(34) & "${exePath}" & chr(34), 0
+Set WshShell = Nothing`;
+        fs.writeFileSync(vbsPath, vbsContent);
+        console.log(`Created hidden launcher: ${vbsPath}`);
+
+        // 2. Create Shortcut using PowerShell
+        const psCommand = `$s=(New-Object -COM WScript.Shell).CreateShortcut('${shortcutPath}');$s.TargetPath='${vbsPath}';$s.WorkingDirectory='${scriptDir}';$s.Description='ActionFi Remote Agent';$s.Save()`;
+        execSync(`powershell -Command "${psCommand}"`);
+        console.log(`Created startup shortcut: ${shortcutPath}`);
+
+        console.log('Installation successful! The agent will start automatically on login.');
+        waitAndExit(0);
+    } catch (err) {
+        console.error('Installation failed:', err);
+        waitAndExit(1);
+    }
+};
+
+const handleUninstall = () => {
+    try {
+        console.log('Uninstalling agent...');
+        const exePath = process.execPath;
+        const scriptDir = path.dirname(exePath);
+        const vbsPath = path.join(scriptDir, 'run-hidden.vbs');
+        const shortcutPath = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'ActionFi Agent.lnk');
+
+        if (fs.existsSync(shortcutPath)) {
+            fs.unlinkSync(shortcutPath);
+            console.log('Removed startup shortcut.');
+        }
+        if (fs.existsSync(vbsPath)) {
+            fs.unlinkSync(vbsPath);
+            console.log('Removed hidden launcher.');
+        }
+        console.log('Uninstallation successful.');
+        waitAndExit(0);
+    } catch (err) {
+        console.error('Uninstallation failed:', err);
+        waitAndExit(1);
+    }
+};
+
+// Check CLI Arguments
+if (process.argv.includes('--install')) {
+    handleInstall();
+}
+if (process.argv.includes('--uninstall')) {
+    handleUninstall();
+}
 
 // Prevent instant close on error
 const waitAndExit = (code = 1) => {
