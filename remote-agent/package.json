@@ -7,16 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "pkg package.json --out-path dist"
-  },
-  "pkg": {
-    "scripts": [
-      "index.js"
-    ],
-    "assets": [],
-    "targets": [
-      "node18-win-x64"
-    ]
+    "build": "pkg index.js --targets node18-win-x64 --output dist/remote-agent-win.exe"
   },
   "dependencies": {
     "cors": "^2.8.5",
