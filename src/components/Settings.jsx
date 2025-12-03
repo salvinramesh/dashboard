@@ -70,7 +70,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
 
     const handleAddNew = () => {
         setFormData({
-            id: generateId(),
+            id: '',
             name: '',
             description: '',
             apiUrl: '',
@@ -143,7 +143,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
             } else {
                 // Add new
                 await systemsAPI.create({
-                    id: formData.id,
+                    id: formData.id || generateId(),
                     name: formData.name,
                     description: formData.description,
                     apiUrl: formData.apiUrl,
@@ -285,6 +285,21 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                                 placeholder="http://192.168.1.100:3001"
                                                 required
                                             />
+                                        </div>
+                                        <div className="col-span-1 md:col-span-2">
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">System ID (Optional)</label>
+                                            <input
+                                                type="text"
+                                                name="id"
+                                                value={formData.id}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+                                                placeholder="Leave empty to generate automatically, or paste Agent ID"
+                                                disabled={!!editingSystem}
+                                            />
+                                            <p className="text-xs text-zinc-500 mt-1">
+                                                {editingSystem ? "ID cannot be changed after creation." : "Paste the AGENT_ID from the agent's .env file here to link them."}
+                                            </p>
                                         </div>
                                     </div>
                                     <div>

@@ -46,32 +46,40 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
 
             // Robust fit handling
             const fitTerminal = () => {
-                try {
-                    fitAddon.fit();
-                    // Also emit resize to server after fitting
-                    if (socketRef.current && xtermRef.current && socketRef.current.connected) {
-                        socketRef.current.emit('resize', {
-                            cols: xtermRef.current.cols,
-                            rows: xtermRef.current.rows
-                        });
+                if (!terminalRef.current || !xtermRef.current) return;
+
+                // Check if element is visible and has dimensions
+                const rect = terminalRef.current.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+
+                requestAnimationFrame(() => {
+                    try {
+                        fitAddon.fit();
+                        // Also emit resize to server after fitting
+                        if (socketRef.current && xtermRef.current && socketRef.current.connected) {
+                            socketRef.current.emit('resize', {
+                                cols: xtermRef.current.cols,
+                                rows: xtermRef.current.rows
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Failed to fit terminal:', e);
                     }
-                } catch (e) {
-                    console.warn('Failed to fit terminal:', e);
-                }
+                });
             };
 
             // Initial fit delay
-            setTimeout(fitTerminal, 100);
+            setTimeout(fitTerminal, 200);
 
             // Resize observer for terminal container
             resizeObserver = new ResizeObserver(() => {
-                requestAnimationFrame(fitTerminal);
+                fitTerminal();
             });
             resizeObserver.observe(terminalRef.current);
 
-            // Handle window resize (still useful for overall layout changes)
+            // Handle window resize
             handleWindowResize = () => {
-                fitTerminal(); // Use the robust fit function
+                fitTerminal();
             };
             window.addEventListener('resize', handleWindowResize);
         }

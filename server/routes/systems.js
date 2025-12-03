@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config');
 
 const { getSystemStatus } = require('../monitor');
+const { sendCommand, isAgentConnected } = require('../agentManager');
 
 const getProxyToken = () => {
     return jwt.sign({ username: 'proxy', role: 'system' }, JWT_SECRET, { expiresIn: '1m' });
@@ -31,7 +32,12 @@ router.get('/', async (req, res) => {
         });
 
         console.log('Sending response...');
-        res.json(systems);
+        try {
+            res.json(systems);
+        } catch (jsonError) {
+            console.error('JSON Serialization Error:', jsonError);
+            res.status(500).json({ error: 'Failed to serialize response', details: jsonError.message });
+        }
     } catch (error) {
         console.error('Error fetching systems:', error);
         res.status(500).json({ error: 'Failed to fetch systems', details: error.message });
@@ -167,22 +173,20 @@ router.get('/:id/resources', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/resources`, {
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`Remote system returned ${response.status}`);
+            // Use active socket if available
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'get-resources', {}, 60000);
+                res.json(data);
+            } else {
+                // Fallback to HTTP if not connected (legacy or local)
+                // Or just error out? For now, let's error out if not connected
+                // unless we want to support hybrid.
+                // Let's assume push-only for now for simplicity.
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error fetching resources from ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error fetching resources from ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in resources proxy:', error);
@@ -206,28 +210,15 @@ router.get('/:id/security', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            // Note: The remote endpoint might be /api/security or similar depending on the agent implementation
-            // Based on previous context, the agent seems to expose /api/stats (resources) 
-            // We need to check if /api/security exists on the agent. 
-            // If not, we might need to implement it there too.
-            // For now, assuming the agent has it or we are proxying to what exists.
-            // Wait, looking at server/index.js (the agent), it has /api/security.
-            const response = await fetch(`${api_url}/api/security`, {
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'get-security', {}, 60000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error fetching security from ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error fetching security from ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in security proxy:', error);
@@ -251,23 +242,15 @@ router.get('/:id/stats', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/stats`, {
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'get-stats', {}, 60000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            // console.log(`[DEBUG] Proxy stats for ${id}:`, JSON.stringify(data.disk));
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error fetching stats from ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error fetching stats from ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in stats proxy:', error);
@@ -355,24 +338,15 @@ router.post('/:id/processes/:pid/kill', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/processes/${pid}/kill`, {
-                method: 'POST',
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'kill-process', { pid }, 30000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error killing process on ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error killing process on ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in process kill proxy:', error);
@@ -396,22 +370,15 @@ router.get('/:id/services', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/services`, {
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'get-services', {}, 15000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error fetching services from ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error fetching services from ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in services proxy:', error);
@@ -438,24 +405,15 @@ router.post('/:id/services/:name/:action', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/services/${name}/${action}`, {
-                method: 'POST',
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'control-service', { name, action }, 30000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error controlling service on ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error controlling service on ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in service control proxy:', error);
@@ -482,24 +440,15 @@ router.post('/:id/docker/:containerId/:action', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const response = await fetch(`${api_url}/api/docker/${containerId}/${action}`, {
-                method: 'POST',
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'control-docker', { containerId, action }, 15000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error controlling docker container on ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error controlling docker container on ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in docker control proxy:', error);
@@ -524,26 +473,15 @@ router.get('/:id/files/list', async (req, res) => {
         const token = getProxyToken();
 
         try {
-            const url = new URL(`${api_url}/api/files/list`);
-            if (dirPath) url.searchParams.append('path', dirPath);
-
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Remote system returned ${response.status}`);
+            if (isAgentConnected(id)) {
+                const data = await sendCommand(id, 'list-files', { path: dirPath }, 15000);
+                res.json(data);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
             }
-
-            const data = await response.json();
-            res.json(data);
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error(`Error listing files from ${api_url}:`, fetchError);
-            res.status(502).json({ error: 'Failed to reach remote system', details: fetchError.message });
+        } catch (err) {
+            console.error(`Error listing files from ${api_url}:`, err);
+            res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
         console.error('Error in file list proxy:', error);
@@ -563,57 +501,31 @@ router.get('/:id/files/download', async (req, res) => {
         }
 
         const { api_url } = result.rows[0];
-        const token = getProxyToken();
-
-        // We don't use fetch here because we want to pipe the stream directly
-        // But we need to add the Authorization header.
-        // Since we are proxying a download, we can fetch it and pipe the response body.
 
         try {
-            const url = new URL(`${api_url}/api/files/download`);
-            url.searchParams.append('path', filePath);
+            if (isAgentConnected(id)) {
+                // Request file from agent (timeout 60s for larger files)
+                const data = await sendCommand(id, 'download-file', { path: filePath }, 60000);
 
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Remote system returned ${response.status}`);
-            }
-
-            // Forward headers
-            res.setHeader('Content-Disposition', response.headers.get('content-disposition') || `attachment; filename="${filePath.split('/').pop()}"`);
-            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-
-            // Pipe the web stream to the express response
-            const reader = response.body.getReader();
-            const stream = new ReadableStream({
-                start(controller) {
-                    return pump();
-                    function pump() {
-                        return reader.read().then(({ done, value }) => {
-                            if (done) {
-                                controller.close();
-                                return;
-                            }
-                            controller.enqueue(value);
-                            return pump();
-                        });
-                    }
+                if (!data || !data.content) {
+                    throw new Error('Empty response from agent');
                 }
-            });
 
-            // Node 18+ fetch returns a web stream, but res is a Node stream.
-            // We can convert or just iterate.
-            // Simpler approach for Node environment:
-            const { Readable } = require('stream');
-            // @ts-ignore
-            Readable.fromWeb(response.body).pipe(res);
+                const fileBuffer = Buffer.from(data.content, 'base64');
+                const fileName = data.name || filePath.split('/').pop();
 
-        } catch (fetchError) {
-            console.error(`Error downloading file from ${api_url}:`, fetchError);
+                res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+                res.setHeader('Content-Type', data.mime || 'application/octet-stream');
+                res.setHeader('Content-Length', fileBuffer.length);
+
+                res.send(fileBuffer);
+            } else {
+                res.status(503).json({ error: 'Agent not connected' });
+            }
+        } catch (err) {
+            console.error(`Error downloading file from ${api_url}:`, err);
             if (!res.headersSent) {
-                res.status(502).json({ error: 'Failed to download file', details: fetchError.message });
+                res.status(502).json({ error: 'Failed to download file', details: err.message });
             }
         }
     } catch (error) {

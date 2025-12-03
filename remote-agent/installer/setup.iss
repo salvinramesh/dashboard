@@ -8,19 +8,19 @@ UninstallDisplayIcon={app}\remote-agent-win.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=C:\Users\salvin\Pictures\dashboard\remote-agent\dist
-OutputBaseFilename=ActionFi-Setup-GUI-v3
+OutputBaseFilename=ActionFi-Setup-GUI-v4
 PrivilegesRequired=admin
 
 [Files]
-Source: "C:\Users\salvin\Pictures\dashboard\remote-agent\dist\remote-agent-win.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\remote-agent-win.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ActionFi Agent"; Filename: "{app}\remote-agent-win.exe"
 Name: "{group}\Uninstall ActionFi Agent"; Filename: "{uninstallexe}"
 
 [Run]
-; 1. Generate Configuration (Hidden)
-Filename: "cmd.exe"; Parameters: "/c echo AGENT_ID=win-%RANDOM%-%RANDOM% > ""{app}\.env"" & echo AGENT_NAME=Windows-%COMPUTERNAME% >> ""{app}\.env"" & echo DASHBOARD_URL=http://117.247.180.176:3006 >> ""{app}\.env"" & echo JWT_SECRET=your-secret-key-change-in-production >> ""{app}\.env"" & echo PORT=3002 >> ""{app}\.env"""; Flags: runhidden
+; 1. Generate Configuration (Hidden) - Uses the URL entered by the user
+Filename: "cmd.exe"; Parameters: "/c echo AGENT_ID=win-%RANDOM%-%RANDOM% > ""{app}\.env"" & echo AGENT_NAME=Windows-%COMPUTERNAME% >> ""{app}\.env"" & echo DASHBOARD_URL={code:GetDashboardUrl} >> ""{app}\.env"" & echo JWT_SECRET=your-secret-key-change-in-production >> ""{app}\.env"" & echo PORT=3002 >> ""{app}\.env"""; Flags: runhidden
 
 ; 2. Install Service
 Filename: "{app}\remote-agent-win.exe"; Parameters: "--install"; Flags: runhidden
@@ -39,6 +39,26 @@ Filename: "taskkill.exe"; Parameters: "/F /IM remote-agent-win.exe"; Flags: runh
 Filename: "{app}\remote-agent-win.exe"; Parameters: "--uninstall"; Flags: runhidden; RunOnceId: "RemoveService"
 
 [Code]
+var
+  DashboardUrlPage: TInputQueryWizardPage;
+
+procedure InitializeWizard;
+begin
+  DashboardUrlPage := CreateInputQueryPage(wpWelcome,
+    'Dashboard Configuration', 'Please enter the URL of your Dashboard Server.',
+    'This allows the agent to connect to your central dashboard.');
+  
+  DashboardUrlPage.Add('Dashboard URL:', False);
+  
+  // Default value
+  DashboardUrlPage.Values[0] := 'http://117.247.180.176:3006';
+end;
+
+function GetDashboardUrl(Param: String): String;
+begin
+  Result := DashboardUrlPage.Values[0];
+end;
+
 function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' });
 const express = require('express');
 const si = require('systeminformation');
 const pool = require('./db');
@@ -247,14 +247,25 @@ const { io: Client } = require('socket.io-client');
 
 const server = http.createServer(app);
 const io = new Server(server, {
+    maxHttpBufferSize: 1e8, // 100 MB
     cors: {
         origin: '*', // Allow connection from Frontend
         methods: ['GET', 'POST']
     }
 });
 
+const { handleAgentConnection } = require('./agentManager');
+
 // Socket Proxy Logic
 io.on('connection', (socket) => {
+    // Check if it's an agent connection
+    const isAgent = socket.handshake.query.type === 'agent';
+
+    if (isAgent) {
+        handleAgentConnection(socket, io);
+        return;
+    }
+
     console.log('Frontend connected:', socket.id);
     let agentSocket = null;
 
@@ -267,65 +278,51 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // Get System URL
-            const result = await pool.query('SELECT api_url FROM systems WHERE id = $1', [systemId]);
-            if (result.rows.length === 0) {
-                socket.emit('error', 'System not found');
+            // Get Agent Socket
+            const { getAgentSocket, isAgentConnected } = require('./agentManager');
+
+            if (!isAgentConnected(systemId)) {
+                socket.emit('error', 'Agent not connected');
                 return;
             }
-            const { api_url } = result.rows[0];
 
-            // Connect to Agent
-            console.log(`Connecting to agent at ${api_url}...`);
-            agentSocket = Client(api_url);
+            const agentSocket = getAgentSocket(systemId);
+            console.log(`Starting terminal session for ${systemId}`);
 
-            agentSocket.on('connect', () => {
-                console.log(`Connected to agent ${systemId}`);
-                // Generate Proxy Token for Agent
-                const proxyToken = jwt.sign({ username: 'proxy', role: 'system' }, process.env.JWT_SECRET, { expiresIn: '1h' });
-                agentSocket.emit('start-terminal', { token: proxyToken });
-            });
+            // Start Terminal on Agent
+            agentSocket.emit('start-terminal', {});
 
-            agentSocket.on('output', (data) => {
-                socket.emit('output', data);
-            });
+            // Forward Output from Agent to Frontend
+            const onOutput = (data) => socket.emit('output', data);
+            const onExit = (code) => socket.emit('exit', code);
+            const onError = (err) => socket.emit('error', err);
 
-            agentSocket.on('error', (err) => {
-                socket.emit('error', err);
-            });
+            agentSocket.on('output', onOutput);
+            agentSocket.on('exit', onExit);
+            agentSocket.on('error', onError);
 
-            agentSocket.on('disconnect', () => {
-                socket.emit('error', 'Agent disconnected');
-            });
-
+            // Forward Input from Frontend to Agent
             socket.on('input', (data) => {
-                if (agentSocket) agentSocket.emit('input', data);
+                agentSocket.emit('input', data);
             });
 
             socket.on('resize', (size) => {
-                if (agentSocket) agentSocket.emit('resize', size);
+                agentSocket.emit('resize', size);
             });
 
-            // Log Viewer Proxy
-            socket.on('watch-log', (data) => {
-                if (agentSocket) agentSocket.emit('watch-log', data);
-            });
-
-            socket.on('stop-log', () => {
-                if (agentSocket) agentSocket.emit('stop-log');
-            });
-
-            agentSocket.on('log-output', (data) => {
-                socket.emit('log-output', data);
-            });
-
-            agentSocket.on('log-error', (data) => {
-                socket.emit('log-error', data);
+            // Cleanup on Disconnect
+            socket.on('disconnect', () => {
+                console.log('Frontend terminal disconnected');
+                agentSocket.off('output', onOutput);
+                agentSocket.off('exit', onExit);
+                agentSocket.off('error', onError);
+                // Optional: Stop terminal on agent? 
+                // agentSocket.emit('stop-terminal'); 
             });
 
         } catch (err) {
             console.error('Terminal proxy error:', err);
-            socket.emit('error', 'Connection failed');
+            socket.emit('error', 'Connection failed: ' + err.message);
         }
     });
 

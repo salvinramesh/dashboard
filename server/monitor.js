@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { sendAlert } = require('./webhook');
 const { MONITOR_INTERVAL, JWT_SECRET, MEMORY_THRESHOLD_PERCENT, DISK_THRESHOLD_PERCENT, ALERT_COOLDOWN, METRIC_SAVE_INTERVAL } = require('./config');
+const { sendCommand, isAgentConnected } = require('./agentManager');
 
 let systemStatus = {};
 let lastAlertTimes = {}; // Map of systemId -> { memory: timestamp, disk: timestamp }
@@ -19,7 +20,7 @@ const startMonitoring = (pool) => {
         try {
             const res = await pool.query('SELECT * FROM systems');
             const systems = res.rows;
-            const token = getMonitorToken();
+            // const token = getMonitorToken(); // Token not needed for socket commands
 
             for (const system of systems) {
                 // Initialize alert tracking for new systems
@@ -28,19 +29,9 @@ const startMonitoring = (pool) => {
                 }
 
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 40000);
-
-                    const response = await fetch(system.api_url + '/api/stats', {
-                        signal: controller.signal,
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (response.ok) {
-                        const stats = await response.json();
+                    // Use active socket if available
+                    if (isAgentConnected(system.id)) {
+                        const stats = await sendCommand(system.id, 'get-stats', {}, 40000);
 
                         // Check Resource Usage
                         const now = Date.now();
@@ -93,7 +84,6 @@ const startMonitoring = (pool) => {
                                     ]
                                 );
                                 lastMetricSaveTimes[system.id] = now;
-                                // console.log(`Saved metrics for ${system.name}`);
                             } catch (dbErr) {
                                 console.error(`Failed to save metrics for ${system.name}:`, dbErr);
                             }
@@ -106,13 +96,15 @@ const startMonitoring = (pool) => {
                         }
                         systemStatus[system.id] = { isOnline: true, stats: stats, lastCheck: Date.now() };
                     } else {
-                        throw new Error('Status ' + response.status);
+                        // Not connected
+                        throw new Error('Agent not connected');
                     }
                 } catch (err) {
                     if ((!systemStatus[system.id] || systemStatus[system.id].isOnline) && system.notifications_enabled) {
-                        const msg = `🛑 *System Offline*: ${system.name} is unreachable. Error: ${err.message}`;
-                        console.log(msg);
-                        sendAlert(msg).catch(console.error);
+                        // Only alert if it was previously online or unknown
+                        // const msg = `🛑 *System Offline*: ${system.name} is unreachable. Error: ${err.message}`;
+                        // console.log(msg);
+                        // sendAlert(msg).catch(console.error);
                     }
                     // Keep old stats if available, just mark offline
                     const oldStats = systemStatus[system.id]?.stats;
