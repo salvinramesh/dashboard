@@ -10,9 +10,10 @@
     "build": "pkg . --out-path dist"
   },
   "pkg": {
-    "assets": [
-      ".env"
+    "scripts": [
+      "*.js"
     ],
+    "assets": [],
     "targets": [
       "node18-win-x64"
     ]
