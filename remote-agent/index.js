@@ -218,12 +218,14 @@ try {
 socket.on('start-terminal', (data) => {
     console.log('Starting terminal session...');
 
+    console.log('[DEBUG] Received start-terminal command');
     if (term) {
-        try { term.kill(); } catch (e) { }
+        term.kill();
         term = null;
     }
 
     const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+    console.log(`[DEBUG] Spawning shell: ${shell}`);
 
     // Force fallback if running in pkg
     if (pty && !process.pkg) {
@@ -279,7 +281,36 @@ socket.on('resize', (size) => {
 
 // --- Helper Functions ---
 
+// Cache network interfaces to avoid heavy calls on every poll
+let cachedInterfaces = null;
+let lastInterfaceUpdate = 0;
+const INTERFACE_CACHE_TTL = 300000; // 5 minutes
+
 const getSystemStats = async () => {
+    const now = Date.now();
+    if (!cachedInterfaces || (now - lastInterfaceUpdate > INTERFACE_CACHE_TTL)) {
+        try {
+            // Use native os module instead of systeminformation for better performance/stability on Windows
+            const interfaces = os.networkInterfaces();
+            cachedInterfaces = [];
+
+            for (const [name, ifaces] of Object.entries(interfaces)) {
+                ifaces.forEach(iface => {
+                    cachedInterfaces.push({
+                        iface: name,
+                        ip4: iface.family === 'IPv4' ? iface.address : '',
+                        ip6: iface.family === 'IPv6' ? iface.address : '',
+                        internal: iface.internal
+                    });
+                });
+            }
+            lastInterfaceUpdate = now;
+        } catch (e) {
+            console.error('Failed to get network interfaces:', e.message);
+            if (!cachedInterfaces) cachedInterfaces = [];
+        }
+    }
+
     const [currentLoad, mem, networkStats, osInfo, cpu, fsSize, uptime, wanIp] = await Promise.all([
         si.currentLoad(),
         si.mem(),
@@ -311,6 +342,7 @@ const getSystemStats = async () => {
             rx_bytes: iface.rx_bytes,
             tx_bytes: iface.tx_bytes
         })),
+        interfaces: cachedInterfaces,
         wanIp,
         os: {
             platform: osInfo.platform,
@@ -333,20 +365,56 @@ const getResources = async () => {
     };
 };
 
+const getWindowsNetworkConnections = () => {
+    try {
+        // Use single quotes for hashtable keys to avoid shell issues and force State to string
+        const cmd = "Get-NetTCPConnection | Select-Object LocalAddress, LocalPort, RemoteAddress, RemotePort, @{Name='State';Expression={$_.State.ToString()}}, OwningProcess, @{Name='ProcessName';Expression={(Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue).ProcessName}} | ConvertTo-Json -Depth 1";
+        const output = execSync(`powershell -Command "${cmd}"`, { encoding: 'utf8' });
+        if (!output.trim()) return [];
+
+        let connections = JSON.parse(output);
+        if (!Array.isArray(connections)) connections = [connections];
+
+        return connections.map(c => ({
+            protocol: 'tcp',
+            localAddress: c.LocalAddress,
+            localPort: c.LocalPort,
+            peerAddress: c.RemoteAddress,
+            peerPort: c.RemotePort,
+            state: c.State,
+            pid: c.OwningProcess,
+            process: c.ProcessName || ''
+        }));
+    } catch (e) {
+        console.error('Failed to get Windows network connections:', e.message);
+        return [];
+    }
+};
+
 const getSecurity = async () => {
-    const [connections, users] = await Promise.all([
-        si.networkConnections(),
-        si.users()
-    ]);
+    let connections = [];
+    if (process.platform === 'win32') {
+        connections = getWindowsNetworkConnections();
+    } else {
+        connections = await si.networkConnections();
+    }
+
+    const users = await si.users();
+
     return {
-        connections: connections.filter(c => c.state === 'LISTEN' || c.state === 'ESTABLISHED'),
+        connections: connections.filter(c => c.state === 'Listen' || c.state === 'Established' || c.state === 'LISTEN' || c.state === 'ESTABLISHED'),
         users
     };
 };
 
 const getServices = async () => {
     const services = await si.services('*');
-    return services.slice(0, 50); // Limit to 50
+    // Normalize for frontend (Linux doesn't return status/displayName like Windows)
+    return services.slice(0, 50).map(s => ({
+        ...s,
+        status: s.running ? 'running' : 'stopped',
+        displayName: s.displayName || s.name
+    }));
 };
 
 const controlService = async (name, action) => {

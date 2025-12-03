@@ -24,6 +24,7 @@ const handleAgentConnection = (socket, io) => {
             systemId = id;
             agentSockets.set(id, socket);
             console.log(`[AgentManager] Agent registered: ${id} (${socket.id})`);
+            console.log(`[AgentManager] Current active agents: ${Array.from(agentSockets.keys()).join(', ')}`);
             socket.emit('register-success');
 
             // Notify frontend/monitor that agent is online?

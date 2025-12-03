@@ -8,27 +8,25 @@ UninstallDisplayIcon={app}\remote-agent-win.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=C:\Users\salvin\Pictures\dashboard\remote-agent\dist
-OutputBaseFilename=ActionFi-Setup-GUI-v4
+OutputBaseFilename=ActionFi-Setup-GUI-v11
 PrivilegesRequired=admin
 
 [Files]
 Source: "..\dist\remote-agent-win.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "run-hidden.vbs"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ActionFi Agent"; Filename: "{app}\remote-agent-win.exe"
 Name: "{group}\Uninstall ActionFi Agent"; Filename: "{uninstallexe}"
 
 [Run]
-; 1. Generate Configuration (Hidden) - Uses the URL entered by the user
-Filename: "cmd.exe"; Parameters: "/c echo AGENT_ID=win-%RANDOM%-%RANDOM% > ""{app}\.env"" & echo AGENT_NAME=Windows-%COMPUTERNAME% >> ""{app}\.env"" & echo DASHBOARD_URL={code:GetDashboardUrl} >> ""{app}\.env"" & echo JWT_SECRET=your-secret-key-change-in-production >> ""{app}\.env"" & echo PORT=3002 >> ""{app}\.env"""; Flags: runhidden
-
-; 2. Install Service
+; 1. Install Service (Env file is now generated in Code section)
 Filename: "{app}\remote-agent-win.exe"; Parameters: "--install"; Flags: runhidden
 
-; 3. Configure Firewall
+; 2. Configure Firewall
 Filename: "powershell.exe"; Parameters: "-Command ""New-NetFirewallRule -DisplayName 'ActionFi Agent' -Direction Inbound -LocalPort 3002 -Protocol TCP -Action Allow -ErrorAction SilentlyContinue"""; Flags: runhidden
 
-; 4. Start Agent Immediately
+; 3. Start Agent Immediately
 Filename: "wscript.exe"; Parameters: """{app}\run-hidden.vbs"""; Flags: runhidden nowait
 
 [UninstallRun]
@@ -41,22 +39,62 @@ Filename: "{app}\remote-agent-win.exe"; Parameters: "--uninstall"; Flags: runhid
 [Code]
 var
   DashboardUrlPage: TInputQueryWizardPage;
+  AgentIdPage: TOutputMsgMemoWizardPage;
+  AgentID: String;
 
 procedure InitializeWizard;
 begin
+  // 1. Dashboard URL Page
   DashboardUrlPage := CreateInputQueryPage(wpWelcome,
     'Dashboard Configuration', 'Please enter the URL of your Dashboard Server.',
     'This allows the agent to connect to your central dashboard.');
   
   DashboardUrlPage.Add('Dashboard URL:', False);
-  
-  // Default value
   DashboardUrlPage.Values[0] := 'http://117.247.180.176:3006';
+
+  // 2. Agent ID Display Page (shown after installation)
+  AgentIdPage := CreateOutputMsgMemoPage(wpInstalling,
+    'Installation Complete', 'Agent ID Generated',
+    'The agent has been successfully installed. Please copy the Agent ID below if you need to register it manually:',
+    '');
 end;
 
 function GetDashboardUrl(Param: String): String;
 begin
   Result := DashboardUrlPage.Values[0];
+end;
+
+function GenerateAgentID: String;
+begin
+  // Generate a random ID: win-XXXXX-XXXXX
+  Result := 'win-' + IntToStr(Random(90000) + 10000) + '-' + IntToStr(Random(90000) + 10000);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  EnvContent: String;
+  FileName: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    // Generate ID and Content
+    AgentID := GenerateAgentID;
+    FileName := ExpandConstant('{app}\.env');
+    
+    EnvContent := 'AGENT_ID=' + AgentID + #13#10 +
+                  'AGENT_NAME=Windows-' + GetComputerNameString + #13#10 +
+                  'DASHBOARD_URL=' + DashboardUrlPage.Values[0] + #13#10 +
+                  'JWT_SECRET=your-secret-key-change-in-production' + #13#10 +
+                  'PORT=3002';
+                  
+    // Write .env file
+    SaveStringToFile(FileName, EnvContent, False);
+    
+    // Update the ID page
+    AgentIdPage.RichEditViewer.Lines.Add('AGENT_ID: ' + AgentID);
+    AgentIdPage.RichEditViewer.Lines.Add('');
+    AgentIdPage.RichEditViewer.Lines.Add('Status: Agent is running in the background.');
+  end;
 end;
 
 function InitializeSetup(): Boolean;

@@ -16,129 +16,133 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
     const [status, setStatus] = useState('Connecting...');
 
     useEffect(() => {
-        // Initialize XTerm
-        const term = new XTerm({
-            cursorBlink: true,
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#ffffff',
-            },
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            fontSize: 14,
-        });
-
-        const fitAddon = new FitAddon();
-        term.loadAddon(fitAddon);
-
-        xtermRef.current = term;
-        fitAddonRef.current = fitAddon;
-
-        // Connect to Socket
+        // 1. Initialize Socket first (independent of UI)
         const token = localStorage.getItem('token');
-        const socket = io(API_URL);
+        // Use relative path to leverage Vite proxy
+        const socketUrl = '/';
+        console.log('Connecting to Terminal Socket:', socketUrl);
+
+        const socket = io(socketUrl, {
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            withCredentials: true,
+            path: '/socket.io' // Default path, explicitly stated
+        });
         socketRef.current = socket;
 
-        let resizeObserver;
-        let handleWindowResize;
-
-        if (terminalRef.current) {
-            term.open(terminalRef.current);
-
-            // Robust fit handling
-            const fitTerminal = () => {
-                if (!terminalRef.current || !xtermRef.current) return;
-
-                // Check if element is visible and has dimensions
-                const rect = terminalRef.current.getBoundingClientRect();
-                if (rect.width === 0 || rect.height === 0) return;
-
-                requestAnimationFrame(() => {
-                    try {
-                        fitAddon.fit();
-                        // Also emit resize to server after fitting
-                        if (socketRef.current && xtermRef.current && socketRef.current.connected) {
-                            socketRef.current.emit('resize', {
-                                cols: xtermRef.current.cols,
-                                rows: xtermRef.current.rows
-                            });
-                        }
-                    } catch (e) {
-                        console.warn('Failed to fit terminal:', e);
-                    }
-                });
-            };
-
-            // Initial fit delay
-            setTimeout(fitTerminal, 200);
-
-            // Resize observer for terminal container
-            resizeObserver = new ResizeObserver(() => {
-                fitTerminal();
-            });
-            resizeObserver.observe(terminalRef.current);
-
-            // Handle window resize
-            handleWindowResize = () => {
-                fitTerminal();
-            };
-            window.addEventListener('resize', handleWindowResize);
-        }
-
         socket.on('connect', () => {
+            console.log('Socket connected, ID:', socket.id);
             setStatus('Connected to Server. Authenticating...');
             socket.emit('connect-terminal', { systemId, token });
         });
 
         socket.on('output', (data) => {
-            term.write(data);
+            if (xtermRef.current) {
+                xtermRef.current.write(data);
+            }
             setStatus('Connected');
         });
 
         socket.on('error', (err) => {
-            term.write(`\r\n\x1b[31mError: ${err}\x1b[0m\r\n`);
+            console.error('Socket error:', err);
+            if (xtermRef.current) {
+                xtermRef.current.write(`\r\n\x1b[31mError: ${err}\x1b[0m\r\n`);
+            }
             setStatus('Error');
         });
 
         socket.on('disconnect', () => {
-            term.write('\r\n\x1b[33mDisconnected from server.\x1b[0m\r\n');
+            console.log('Socket disconnected');
+            if (xtermRef.current) {
+                xtermRef.current.write('\r\n\x1b[33mDisconnected from server.\x1b[0m\r\n');
+            }
             setStatus('Disconnected');
         });
 
-        term.onData((data) => {
-            socket.emit('input', data);
-        });
+        // 2. Initialize XTerm only when container is ready
+        const initTerminal = () => {
+            if (!terminalRef.current || xtermRef.current) return;
 
-        term.onResize((size) => {
-            socket.emit('resize', size);
-        });
+            // Check dimensions
+            const rect = terminalRef.current.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
 
-        // Handle window resize
-        const handleResize = () => {
-            fitAddon.fit();
-            socket.emit('resize', { cols: term.cols, rows: term.rows });
+            try {
+                const term = new XTerm({
+                    cursorBlink: true,
+                    theme: {
+                        background: '#1e1e1e',
+                        foreground: '#ffffff',
+                    },
+                    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                    fontSize: 14,
+                });
+
+                const fitAddon = new FitAddon();
+                term.loadAddon(fitAddon);
+
+                term.open(terminalRef.current);
+                fitAddon.fit();
+
+                xtermRef.current = term;
+                fitAddonRef.current = fitAddon;
+
+                // Bind input
+                term.onData((data) => {
+                    socket.emit('input', data);
+                });
+
+                term.onResize((size) => {
+                    socket.emit('resize', size);
+                });
+
+                // Initial resize emit
+                socket.emit('resize', { cols: term.cols, rows: term.rows });
+
+            } catch (err) {
+                console.error('Failed to initialize terminal:', err);
+            }
         };
-        window.addEventListener('resize', handleResize);
 
+        // Observer to trigger init when visible
+        const resizeObserver = new ResizeObserver(() => {
+            if (!xtermRef.current) {
+                initTerminal();
+            } else {
+                // Fit if already initialized
+                try {
+                    fitAddonRef.current?.fit();
+                    socket.emit('resize', {
+                        cols: xtermRef.current.cols,
+                        rows: xtermRef.current.rows
+                    });
+                } catch (e) {
+                    // Ignore dimensions error
+                }
+            }
+        });
+
+        if (terminalRef.current) {
+            resizeObserver.observe(terminalRef.current);
+        }
+
+        // Cleanup
         return () => {
             socket.disconnect();
-            term.dispose();
-            window.removeEventListener('resize', handleResize);
+            if (xtermRef.current) {
+                xtermRef.current.dispose();
+            }
+            resizeObserver.disconnect();
         };
     }, [systemId]);
 
     // Re-fit on fullscreen toggle
     useEffect(() => {
-        if (fitAddonRef.current) {
-            setTimeout(() => {
-                fitAddonRef.current.fit();
-                if (socketRef.current && xtermRef.current) {
-                    socketRef.current.emit('resize', {
-                        cols: xtermRef.current.cols,
-                        rows: xtermRef.current.rows
-                    });
-                }
-            }, 100);
-        }
+        setTimeout(() => {
+            try {
+                fitAddonRef.current?.fit();
+            } catch (e) { }
+        }, 100);
     }, [isFullscreen]);
 
     return (
@@ -168,7 +172,7 @@ export const Terminal = ({ systemId, systemName, onClose }) => {
                 </div>
 
                 {/* Terminal Container */}
-                <div className="flex-1 relative p-2">
+                <div className="flex-1 relative p-2 bg-[#1e1e1e]">
                     <div ref={terminalRef} className="absolute inset-0" />
                 </div>
             </div>

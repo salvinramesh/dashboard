@@ -245,19 +245,34 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { io: Client } = require('socket.io-client');
 
+// Debug Middleware
+app.use((req, res, next) => {
+    console.log(`[HTTP] ${req.method} ${req.url}`);
+    next();
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     maxHttpBufferSize: 1e8, // 100 MB
     cors: {
-        origin: '*', // Allow connection from Frontend
-        methods: ['GET', 'POST']
-    }
+        origin: true, // Reflect request origin
+        methods: ['GET', 'POST'],
+        credentials: true
+    },
+    transports: ['websocket', 'polling']
 });
 
 const { handleAgentConnection } = require('./agentManager');
 
 // Socket Proxy Logic
 io.on('connection', (socket) => {
+    console.log(`[${new Date().toISOString()}] New Socket Connection: ${socket.id} (Transport: ${socket.conn.transport.name})`);
+    console.log('Handshake Query:', socket.handshake.query);
+
+    socket.on('disconnect', (reason) => {
+        console.log(`[${new Date().toISOString()}] Socket Disconnected: ${socket.id} (Reason: ${reason})`);
+    });
+
     // Check if it's an agent connection
     const isAgent = socket.handshake.query.type === 'agent';
 
@@ -270,13 +285,16 @@ io.on('connection', (socket) => {
     let agentSocket = null;
 
     socket.on('connect-terminal', async ({ systemId, token }) => {
+        console.log(`[DEBUG] Received connect-terminal for system ${systemId}`);
         try {
             // Verify User Token
             const user = jwt.verify(token, process.env.JWT_SECRET);
             if (!user) {
+                console.log('[DEBUG] Token verification failed');
                 socket.emit('error', 'Authentication failed');
                 return;
             }
+            console.log(`[DEBUG] User authenticated: ${user.username}`);
 
             // Get Agent Socket
             const { getAgentSocket, isAgentConnected } = require('./agentManager');
@@ -334,6 +352,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

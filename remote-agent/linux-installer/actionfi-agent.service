@@ -6,10 +6,11 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/actionfi-agent
-ExecStart=/usr/bin/node /opt/actionfi-agent/index.js
+ExecStart=/opt/actionfi-agent/node/bin/node /opt/actionfi-agent/index.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
+Environment=PATH=/opt/actionfi-agent/node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 [Install]
 WantedBy=multi-user.target
