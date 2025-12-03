@@ -35,4 +35,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: remote-agent-win
-        path: remote-agent/dist/remote-agent.exe
+        path: remote-agent/dist/remote-agent-win.exe
