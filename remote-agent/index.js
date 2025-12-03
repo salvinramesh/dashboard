@@ -1,3 +1,4 @@
+console.log('DEBUG: Agent script starting...');
 const path = require('path');
 require('dotenv').config({ path: path.join(path.dirname(process.execPath), '.env') });
 const express = require('express');
