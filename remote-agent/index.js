@@ -85,7 +85,14 @@ const handleUninstall = () => {
 
 
 
-process.stdin.on('data', () => process.exit(code));
+// Prevent instant close on error
+const waitAndExit = (code = 1) => {
+    console.log('\nPress any key to exit...');
+    if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+    process.stdin.on('data', () => process.exit(code));
 };
 
 process.on('uncaughtException', (err) => {
