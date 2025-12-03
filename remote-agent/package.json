@@ -7,11 +7,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "pkg . --out-path dist"
+    "build": "pkg package.json --out-path dist"
   },
   "pkg": {
     "scripts": [
-      "*.js"
+      "index.js"
     ],
     "assets": [],
     "targets": [
