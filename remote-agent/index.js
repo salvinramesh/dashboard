@@ -6,7 +6,6 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const readline = require('readline');
 const fs = require('fs');
-const path = require('path');
 const { execSync } = require('child_process');
 
 // --- Logging Setup ---
