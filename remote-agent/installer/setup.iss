@@ -8,7 +8,7 @@ UninstallDisplayIcon={app}\remote-agent-win.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=C:\Users\salvin\Pictures\dashboard\remote-agent\dist
-OutputBaseFilename=ActionFi-Setup-GUI-v11
+OutputBaseFilename=ActionFi-Setup-GUI-v15
 PrivilegesRequired=admin
 
 [Files]

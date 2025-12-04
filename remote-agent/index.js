@@ -12,6 +12,7 @@ const fs = require('fs');
 const { execSync, spawn } = require('child_process');
 const io = require('socket.io-client');
 const os = require('os');
+const screenshot = require('screenshot-desktop');
 
 // --- Configuration ---
 const AGENT_ID = process.env.AGENT_ID;
@@ -143,7 +144,42 @@ socket.on('connect', () => {
     socket.emit('register', { id: AGENT_ID, token });
 });
 
+// Remote Desktop Logic
+let screenInterval = null;
+
+socket.on('start-desktop', () => {
+    console.log('Starting desktop stream...');
+    socket.emit('debug-log', 'Agent: Received start-desktop command');
+
+    if (screenInterval) clearInterval(screenInterval);
+
+    screenInterval = setInterval(async () => {
+        try {
+            // socket.emit('debug-log', 'Agent: Capturing screenshot...');
+            const img = await screenshot({ format: 'jpg' });
+            // socket.emit('debug-log', `Agent: Screenshot captured (${img.length} bytes)`);
+            socket.emit('screen-frame', img.toString('base64'));
+        } catch (err) {
+            console.error('Screen capture failed:', err);
+            socket.emit('debug-log', `Agent: Screen capture failed: ${err.message}`);
+        }
+    }, 500); // 2 FPS
+});
+
+socket.on('stop-desktop', () => {
+    console.log('Stopping desktop stream...');
+    socket.emit('debug-log', 'Agent: Stopping desktop stream');
+    if (screenInterval) {
+        clearInterval(screenInterval);
+        screenInterval = null;
+    }
+});
+
 socket.on('disconnect', () => {
+    if (screenInterval) {
+        clearInterval(screenInterval);
+        screenInterval = null;
+    }
     console.log('Disconnected from Dashboard');
 });
 
@@ -436,7 +472,24 @@ const controlDocker = async (containerId, action) => {
 
 const listFiles = async (dirPath) => {
     try {
-        const targetPath = dirPath ? path.resolve(dirPath) : process.cwd();
+        if (dirPath === 'ROOT') {
+            const drives = await si.fsSize();
+            const items = drives.map(drive => ({
+                name: drive.mount,
+                isDirectory: true,
+                size: drive.size,
+                modified: Date.now() // Mock date
+            }));
+            return { items, path: 'ROOT' };
+        }
+
+        let targetPath = dirPath ? path.resolve(dirPath) : process.cwd();
+
+        // Fix for Windows drive letters (e.g. "C:" -> "C:\")
+        if (process.platform === 'win32' && /^[a-zA-Z]:$/.test(targetPath)) {
+            targetPath += '\\';
+        }
+
         const files = fs.readdirSync(targetPath, { withFileTypes: true });
         const items = files.map(f => {
             try {

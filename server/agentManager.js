@@ -57,6 +57,11 @@ const handleAgentConnection = (socket, io) => {
             pendingRequests.delete(requestId);
         }
     });
+
+    // Handle debug logs from agent
+    socket.on('debug-log', (message) => {
+        console.log(`[AGENT-DEBUG] ${systemId}: ${message}`);
+    });
 };
 
 // Helper to send a command and wait for response

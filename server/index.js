@@ -344,6 +344,47 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('connect-desktop', async ({ systemId, token }) => {
+        console.log(`[DEBUG] Received connect-desktop for system ${systemId}`);
+        try {
+            // Verify User Token
+            const user = jwt.verify(token, process.env.JWT_SECRET);
+            if (!user) {
+                socket.emit('error', 'Authentication failed');
+                return;
+            }
+
+            // Get Agent Socket
+            const { getAgentSocket, isAgentConnected } = require('./agentManager');
+
+            if (!isAgentConnected(systemId)) {
+                socket.emit('error', 'Agent not connected');
+                return;
+            }
+
+            const agentSocket = getAgentSocket(systemId);
+            console.log(`Starting desktop session for ${systemId}`);
+
+            // Start Desktop Stream on Agent
+            agentSocket.emit('start-desktop', {});
+
+            // Forward Frames from Agent to Frontend
+            const onScreenFrame = (data) => socket.emit('screen-frame', data);
+            agentSocket.on('screen-frame', onScreenFrame);
+
+            // Cleanup on Disconnect
+            socket.on('disconnect', () => {
+                console.log('Frontend desktop disconnected');
+                agentSocket.off('screen-frame', onScreenFrame);
+                agentSocket.emit('stop-desktop');
+            });
+
+        } catch (err) {
+            console.error('Desktop proxy error:', err);
+            socket.emit('error', 'Connection failed: ' + err.message);
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('Frontend disconnected:', socket.id);
         if (agentSocket) {

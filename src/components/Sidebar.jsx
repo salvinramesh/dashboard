@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network, ServerCog, Box, HardDrive, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Server, Settings, Activity, Shield, Users, Network, ServerCog, Box, HardDrive, UserCircle, Monitor } from 'lucide-react';
 
 export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => {
     return (
@@ -52,6 +52,12 @@ export const Sidebar = ({ currentPage, onNavigate, showSystemLinks = true }) => 
                                 label="Files"
                                 active={currentPage === 'files'}
                                 onClick={() => onNavigate?.('files')}
+                            />
+                            <NavItem
+                                icon={<Monitor size={20} />}
+                                label="Remote Desktop"
+                                active={currentPage === 'remote-desktop'}
+                                onClick={() => onNavigate?.('remote-desktop')}
                             />
                         </>
                     )}

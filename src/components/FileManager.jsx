@@ -32,6 +32,11 @@ export const FileManager = ({ system, onNavigate }) => {
     };
 
     const handleNavigateDir = (name) => {
+        if (currentPath === 'ROOT') {
+            setCurrentPath(name); // Drive letter (e.g. "C:")
+            return;
+        }
+
         const separator = currentPath.includes('\\') ? '\\' : '/'; // Simple heuristic
         // Handle root cases
         let newPath;
@@ -44,10 +49,19 @@ export const FileManager = ({ system, onNavigate }) => {
     };
 
     const handleGoUp = () => {
+        if (currentPath === 'ROOT') return;
+
+        // If at drive root (e.g. C:\), go to ROOT (Drives list)
+        if (currentPath.endsWith(':\\') || currentPath === '/') {
+            setCurrentPath('ROOT');
+            return;
+        }
+
         const separator = currentPath.includes('\\') ? '\\' : '/';
         const parts = currentPath.split(separator).filter(Boolean);
         parts.pop();
         const newPath = parts.length === 0 ? '/' : parts.join(separator);
+
         // Fix for Windows root (e.g. C:)
         if (currentPath.includes(':') && parts.length === 1) {
             setCurrentPath(parts[0] + '\\');
@@ -121,13 +135,20 @@ export const FileManager = ({ system, onNavigate }) => {
                             onClick={handleGoUp}
                             className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
                             title="Go Up"
-                            disabled={currentPath === '/' || currentPath.endsWith(':\\')}
+                            disabled={currentPath === 'ROOT'}
                         >
                             <ArrowUp size={20} />
                         </button>
                         <div className="flex-1 font-mono text-sm text-zinc-300 truncate">
-                            {currentPath || 'Loading...'}
+                            {currentPath === 'ROOT' ? 'My PC' : (currentPath || 'Loading...')}
                         </div>
+                        <button
+                            onClick={() => setCurrentPath('ROOT')} // Go to Drives
+                            className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
+                            title="Drives"
+                        >
+                            <HardDrive size={20} />
+                        </button>
                         <button
                             onClick={() => setCurrentPath('')} // Reset to default/root
                             className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
@@ -157,7 +178,7 @@ export const FileManager = ({ system, onNavigate }) => {
                                     {filteredItems.map((item, i) => (
                                         <tr key={i} className="hover:bg-zinc-800/50 transition-colors group">
                                             <td className="p-4 text-zinc-400">
-                                                {item.isDirectory ? <Folder className="text-blue-400" size={20} /> : <File className="text-zinc-500" size={20} />}
+                                                {currentPath === 'ROOT' ? <HardDrive className="text-yellow-500" size={20} /> : (item.isDirectory ? <Folder className="text-blue-400" size={20} /> : <File className="text-zinc-500" size={20} />)}
                                             </td>
                                             <td className="p-4 font-medium text-white">
                                                 {item.isDirectory ? (

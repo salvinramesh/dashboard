@@ -12,6 +12,7 @@ import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 import UserProfile from './components/UserProfile';
 import { NetworkTraffic } from './components/NetworkTraffic';
+import { RemoteDesktopView } from './components/RemoteDesktopView';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -75,6 +76,8 @@ function App() {
         <Docker system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'files' ? (
         <FileManager system={selectedSystem} onNavigate={handleNavigate} user={user} />
+      ) : currentView === 'remote-desktop' ? (
+        <RemoteDesktopView system={selectedSystem} onNavigate={handleNavigate} user={user} />
       ) : currentView === 'network' ? (
         <NetworkTraffic onNavigate={handleNavigate} currentPage={currentView} showSystemLinks={!!selectedSystem} user={user} />
       ) : currentView === 'users' ? (
