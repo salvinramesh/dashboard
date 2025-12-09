@@ -25,12 +25,17 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         icon: 'Server'
     });
     const [installPrompt, setInstallPrompt] = useState(null);
+    const [pendingAgents, setPendingAgents] = useState([]);
 
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-    // Fetch systems on mount
+    // Fetch systems and pending agents on mount
     useEffect(() => {
         loadSystems();
+        loadPendingAgents();
+
+        // Poll for pending agents every 10s
+        const interval = setInterval(loadPendingAgents, 10000);
 
         const handleBeforeInstallPrompt = (e) => {
             e.preventDefault();
@@ -42,6 +47,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            clearInterval(interval);
         };
     }, []);
 
@@ -58,6 +64,15 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         }
     };
 
+    const loadPendingAgents = async () => {
+        try {
+            const data = await systemsAPI.getPending();
+            setPendingAgents(data);
+        } catch (error) {
+            console.error('Failed to load pending agents:', error);
+        }
+    };
+
     const colorOptions = Object.keys(colorThemes);
     const iconOptions = Object.keys(iconMap);
 
@@ -68,10 +83,14 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAddNew = () => {
+    const handleAddNew = (prefillId = null) => {
+        // Check if prefillId is an event object (from default onClick)
+        const isEvent = prefillId && prefillId.preventDefault;
+        const idToUse = isEvent ? '' : (prefillId || '');
+
         setFormData({
-            id: '',
-            name: '',
+            id: idToUse,
+            name: idToUse ? `New Agent ${idToUse.substring(0, 6)}...` : '',
             description: '',
             apiUrl: '',
             color: 'blue',
@@ -117,17 +136,19 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
         e.preventDefault();
 
         // Validation
-        if (!formData.name || !formData.apiUrl) {
-            alert('Name and API URL are required');
+        if (!formData.name) {
+            alert('Name is required');
             return;
         }
 
-        // URL validation
-        try {
-            new URL(formData.apiUrl);
-        } catch {
-            alert('Please enter a valid URL');
-            return;
+        // URL validation (only if provided)
+        if (formData.apiUrl) {
+            try {
+                new URL(formData.apiUrl);
+            } catch {
+                alert('Please enter a valid URL');
+                return;
+            }
         }
 
         try {
@@ -136,7 +157,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                 await systemsAPI.update(editingSystem, {
                     name: formData.name,
                     description: formData.description,
-                    apiUrl: formData.apiUrl,
+                    apiUrl: formData.apiUrl, // Allow empty string
                     color: formData.color,
                     icon: formData.icon
                 });
@@ -146,7 +167,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                     id: formData.id || generateId(),
                     name: formData.name,
                     description: formData.description,
-                    apiUrl: formData.apiUrl,
+                    apiUrl: formData.apiUrl, // Allow empty string
                     color: formData.color,
                     icon: formData.icon
                 });
@@ -251,7 +272,43 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                         </div>
                     </header>
 
-
+                    {/* Pending/Discovered Agents */}
+                    {pendingAgents.length > 0 && currentUser.role === 'admin' && (
+                        <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="flex items-center gap-2 mb-4 text-amber-500">
+                                <div className="p-2 bg-amber-500/10 rounded-lg">
+                                    <Bell size={20} />
+                                </div>
+                                <h2 className="text-xl font-bold text-white">Discovered Agents ({pendingAgents.length})</h2>
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {pendingAgents.map(agent => (
+                                    <div
+                                        key={agent.id}
+                                        className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 flex items-center justify-between hover:border-amber-500/40 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
+                                                <SettingsIcon size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-white">Unregistered Agent</h3>
+                                                <p className="text-sm text-zinc-400 font-mono">{agent.id}</p>
+                                                <p className="text-xs text-zinc-500 mt-0.5">IP: {agent.ip}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleAddNew(agent.id)}
+                                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                                        >
+                                            <Plus size={18} />
+                                            Add to Dashboard
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Form Modal */}
                     {showForm && (
@@ -275,7 +332,7 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-zinc-400 mb-2">API URL *</label>
+                                            <label className="block text-sm font-medium text-zinc-400 mb-2">API URL (Optional)</label>
                                             <input
                                                 type="url"
                                                 name="apiUrl"
@@ -283,7 +340,6 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                                                 onChange={handleInputChange}
                                                 className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
                                                 placeholder="http://192.168.1.100:3001"
-                                                required
                                             />
                                         </div>
                                         <div className="col-span-1 md:col-span-2">
@@ -520,6 +576,6 @@ export const Settings = ({ onBack, currentPage, onNavigate, showSystemLinks = tr
                     )}
                 </main>
             </div>
-        </div >
+        </div>
     );
 };

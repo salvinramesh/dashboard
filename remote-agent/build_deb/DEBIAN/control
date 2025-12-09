@@ -1,0 +1,10 @@
+Package: actionfi-agent
+Version: 1.1.4
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: ActionFi <support@actionfi.com>
+Depends: libatomic1, ffmpeg, gnome-screenshot, ydotool
+Description: ActionFi Remote Monitoring Agent
+ A lightweight agent for monitoring system resources, services, and containers.
+ Configured to connect to your ActionFi Dashboard.

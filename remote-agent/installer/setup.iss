@@ -1,6 +1,6 @@
 [Setup]
 AppName=ActionFi Agent
-AppVersion=2.0
+AppVersion=v45
 DefaultDirName=C:\ActionFi
 DisableDirPage=no
 DefaultGroupName=ActionFi
@@ -8,7 +8,7 @@ UninstallDisplayIcon={app}\remote-agent-win.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=C:\Users\salvin\Pictures\dashboard\remote-agent\dist
-OutputBaseFilename=ActionFi-Setup-GUI-v15
+OutputBaseFilename=ActionFi-Setup-GUI-v45
 PrivilegesRequired=admin
 
 [Files]
@@ -20,20 +20,24 @@ Name: "{group}\ActionFi Agent"; Filename: "{app}\remote-agent-win.exe"
 Name: "{group}\Uninstall ActionFi Agent"; Filename: "{uninstallexe}"
 
 [Run]
-; 1. Install Service (Env file is now generated in Code section)
-Filename: "{app}\remote-agent-win.exe"; Parameters: "--install"; Flags: runhidden
+; 1. Create Scheduled Task (Directly via Schtasks)
+; Runs 'wscript.exe "{app}\run-hidden.vbs"' at logon with highest privileges
+Filename: "schtasks.exe"; Parameters: "/create /tn ""ActionFiAgent"" /tr ""wscript.exe \""{app}\run-hidden.vbs\"""" /sc onlogon /rl highest /f"; Flags: runhidden
 
 ; 2. Configure Firewall
 Filename: "powershell.exe"; Parameters: "-Command ""New-NetFirewallRule -DisplayName 'ActionFi Agent' -Direction Inbound -LocalPort 3002 -Protocol TCP -Action Allow -ErrorAction SilentlyContinue"""; Flags: runhidden
 
-; 3. Start Agent Immediately
+; 3. Start Agent Immediately (via VBS)
 Filename: "wscript.exe"; Parameters: """{app}\run-hidden.vbs"""; Flags: runhidden nowait
 
 [UninstallRun]
 ; 1. Stop Agent
 Filename: "taskkill.exe"; Parameters: "/F /IM remote-agent-win.exe"; Flags: runhidden; RunOnceId: "StopAgent"
 
-; 2. Remove Service
+; 2. Remove Scheduled Task
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""ActionFiAgent"" /f"; Flags: runhidden; RunOnceId: "RemoveTask"
+
+; 3. Remove Registry Keys (via Agent --uninstall, legacy support)
 Filename: "{app}\remote-agent-win.exe"; Parameters: "--uninstall"; Flags: runhidden; RunOnceId: "RemoveService"
 
 [Code]

@@ -5,11 +5,43 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config');
 
 const { getSystemStatus } = require('../monitor');
-const { sendCommand, isAgentConnected } = require('../agentManager');
+const { sendCommand, isAgentConnected, getConnectedAgents } = require('../agentManager');
 
 const getProxyToken = () => {
     return jwt.sign({ username: 'proxy', role: 'system' }, JWT_SECRET, { expiresIn: '1m' });
 };
+
+// GET /api/systems/pending - Get agents connected via socket but not in DB
+router.get('/pending', async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can view pending agents' });
+        }
+
+        const connectedAgents = getConnectedAgents(); // [{id, ip}]
+        const connectedIds = connectedAgents.map(a => a.id);
+
+        if (connectedIds.length === 0) {
+            return res.json([]);
+        }
+
+        // Check which IDs exist in the DB
+        const result = await pool.query(
+            'SELECT id FROM systems WHERE id = ANY($1)',
+            [connectedIds]
+        );
+
+        const registeredIds = new Set(result.rows.map(row => row.id));
+
+        // Filter out registered agents
+        const pendingAgents = connectedAgents.filter(agent => !registeredIds.has(agent.id));
+
+        res.json(pendingAgents);
+    } catch (error) {
+        console.error('Error fetching pending agents:', error);
+        res.status(500).json({ error: 'Failed to fetch pending agents' });
+    }
+});
 
 // GET /api/systems - Get all systems
 router.get('/', async (req, res) => {
@@ -80,13 +112,13 @@ router.post('/', async (req, res) => {
         const { id, name, description, apiUrl, color, icon, notificationsEnabled } = req.body;
 
         // Validation
-        if (!id || !name || !apiUrl) {
-            return res.status(400).json({ error: 'Missing required fields: id, name, apiUrl' });
+        if (!id || !name) {
+            return res.status(400).json({ error: 'Missing required fields: id, name' });
         }
 
         const result = await pool.query(
             'INSERT INTO systems (id, name, description, api_url, color, icon, notifications_enabled) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [id, name, description || '', apiUrl, color || 'blue', icon || '🖥️', notificationsEnabled !== undefined ? notificationsEnabled : true]
+            [id, name, description || '', apiUrl || '', color || 'blue', icon || '🖥️', notificationsEnabled !== undefined ? notificationsEnabled : true]
         );
 
         res.status(201).json(result.rows[0]);
@@ -346,6 +378,10 @@ router.post('/:id/processes/:pid/kill', async (req, res) => {
             }
         } catch (err) {
             console.error(`Error killing process on ${api_url}:`, err);
+            // Pass through specific agent errors if available
+            if (err.message && (err.message.includes('ESRCH') || err.message.includes('EPERM') || err.message.includes('Failed to kill process'))) {
+                return res.status(400).json({ error: err.message });
+            }
             res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {
@@ -413,6 +449,9 @@ router.post('/:id/services/:name/:action', async (req, res) => {
             }
         } catch (err) {
             console.error(`Error controlling service on ${api_url}:`, err);
+            if (err.message && (err.message.includes('Access denied') || err.message.includes('not found') || err.message.includes('Failed to'))) {
+                return res.status(400).json({ error: err.message });
+            }
             res.status(502).json({ error: 'Failed to reach remote system', details: err.message });
         }
     } catch (error) {

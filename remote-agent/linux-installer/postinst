@@ -1,0 +1,33 @@
+#!/bin/bash
+# ActionFi Agent Post-Install Script
+
+# Reload systemd to recognize new service
+systemctl daemon-reload
+
+# Generate AGENT_ID if not already present in service file
+SERVICE_FILE="/etc/systemd/system/actionfi-agent.service"
+
+if ! grep -q "Environment=AGENT_ID" "$SERVICE_FILE"; then
+    # Generate UUID
+    if [ -f /proc/sys/kernel/random/uuid ]; then
+        AGENT_ID=$(cat /proc/sys/kernel/random/uuid)
+    else
+        AGENT_ID=$(date +%s%N | sha256sum | head -c 36)
+    fi
+    
+    echo "Generated Agent ID: $AGENT_ID"
+    
+    # Inject into Service file (after [Service])
+    sed -i "/^\[Service\]/a Environment=AGENT_ID=$AGENT_ID" "$SERVICE_FILE"
+    
+    # Reload again since we modified unit file
+    systemctl daemon-reload
+fi
+
+# Enable the service to start on boot
+systemctl enable actionfi-agent
+
+# Start the service immediately
+systemctl restart actionfi-agent
+
+echo "ActionFi Agent installed and started."

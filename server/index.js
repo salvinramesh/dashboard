@@ -16,6 +16,9 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
+const path = require('path');
+app.use('/repo', express.static(path.join(__dirname, '../public/repo')));
+app.use('/downloads', express.static(path.join(__dirname, '../public/downloads')));
 
 // Global request logger
 app.use((req, res, next) => {
@@ -262,7 +265,7 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-const { handleAgentConnection } = require('./agentManager');
+const { handleAgentConnection, getSocketId } = require('./agentManager');
 
 // Socket Proxy Logic
 io.on('connection', (socket) => {
@@ -372,6 +375,12 @@ io.on('connection', (socket) => {
             const onScreenFrame = (data) => socket.emit('screen-frame', data);
             agentSocket.on('screen-frame', onScreenFrame);
 
+            // Forward Input from Frontend to Agent
+            socket.on('input', (data) => {
+                console.log(`[DEBUG] Proxying input: ${data.type}`);
+                agentSocket.emit('desktop-input', data);
+            });
+
             // Cleanup on Disconnect
             socket.on('disconnect', () => {
                 console.log('Frontend desktop disconnected');
@@ -382,6 +391,44 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('Desktop proxy error:', err);
             socket.emit('error', 'Connection failed: ' + err.message);
+        }
+    });
+
+    socket.on('join-desktop', (systemId) => {
+        console.log(`[DEBUG] Received join-desktop for systemId: ${systemId}`);
+        // const { getSocketId } = require('./agentManager'); // Removed, imported at top
+        const agentSocketId = getSocketId(systemId);
+        if (agentSocketId) {
+            const agentSocket = io.sockets.sockets.get(agentSocketId);
+            if (agentSocket) {
+                console.log(`[DEBUG] Found agent socket: ${agentSocketId}, emitting start-desktop`);
+                agentSocket.emit('start-desktop', {});
+
+                // Forward Frames from Agent to Frontend
+                const onScreenFrame = (data) => socket.emit('screen-frame', data);
+                agentSocket.on('screen-frame', onScreenFrame);
+
+                // Forward Input from Frontend to Agent
+                const onInput = (data) => {
+                    console.log(`[DEBUG] Proxying input: ${data.type}`);
+                    agentSocket.emit('desktop-input', data);
+                };
+                socket.on('input', onInput);
+
+                // Cleanup on Disconnect
+                socket.on('disconnect', () => {
+                    console.log('Frontend desktop disconnected');
+                    agentSocket.off('screen-frame', onScreenFrame);
+                    socket.off('input', onInput); // Clean up input listener
+                    agentSocket.emit('stop-desktop');
+                });
+            } else {
+                console.log(`[DEBUG] Agent socket not found for ID: ${agentSocketId}`);
+                socket.emit('error', { message: 'Agent socket not found' });
+            }
+        } else {
+            console.log(`[DEBUG] Agent not found for systemId: ${systemId}`);
+            socket.emit('error', { message: 'Agent not connected' });
         }
     });
 

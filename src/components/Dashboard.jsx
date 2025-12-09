@@ -143,9 +143,9 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                             color="purple"
                         />
                         <MetricCard
-                            title="Disk Usage"
-                            value={stats.disk && stats.disk[0] ? `${(stats.disk[0].used / 1024 / 1024 / 1024).toFixed(1)} GB` : 'N/A'}
-                            subValue={stats.disk && stats.disk[0] ? `${(stats.disk[0].size / 1024 / 1024 / 1024).toFixed(1)} GB Total` : 'No Data'}
+                            title="Total Disk Usage"
+                            value={stats.disk ? `${(stats.disk.reduce((acc, drive) => acc + drive.used, 0) / 1024 / 1024 / 1024).toFixed(1)} GB` : 'N/A'}
+                            subValue={stats.disk ? `${(stats.disk.reduce((acc, drive) => acc + drive.size, 0) / 1024 / 1024 / 1024).toFixed(1)} GB Total (${stats.disk.length} Drives)` : 'No Data'}
                             icon={Server}
                             trend={0}
                             color="orange"
@@ -171,6 +171,7 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                             <div className="h-72 w-full relative z-10">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={cpuData}>
+                                        <XAxis dataKey="time" hide />
                                         <defs>
                                             <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#60A5FA" stopOpacity={0.3} />
@@ -268,6 +269,7 @@ export const Dashboard = ({ system, onBack, onNavigate }) => {
                             <div className="h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={netData}>
+                                        <XAxis dataKey="time" hide />
                                         <Tooltip content={<CustomTooltip />} />
                                         <Line
                                             type="monotone"

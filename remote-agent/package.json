@@ -7,14 +7,14 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "pkg index.js --targets node18-win-x64 --output dist/remote-agent-win.exe"
+    "build": "pkg package.json --targets node18-win-x64 --output dist/remote-agent-win.exe",
+    "build-linux": "pkg package.json --targets node18-linux-x64 --output dist/actionfi-agent-linux"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "node-pty": "^1.0.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "systeminformation": "^5.22.9"
@@ -28,8 +28,7 @@
       "node_modules/socket.io-client/dist/socket.io.js"
     ],
     "assets": [
-      "node_modules/socket.io-client/**/*",
-      "node_modules/screenshot-desktop/**/*"
+      "node_modules/socket.io-client/**/*"
     ]
   }
 }

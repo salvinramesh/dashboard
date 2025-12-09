@@ -1,0 +1,17 @@
+[Unit]
+Description=ActionFi Remote Agent
+After=network.target
+
+[Service]
+Environment=JWT_SECRET=your-secret-key-change-in-production
+Environment=DASHBOARD_URL=http://117.247.180.176:3006
+Type=simple
+User=root
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/actionfi-agent
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

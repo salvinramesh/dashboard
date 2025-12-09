@@ -39,6 +39,15 @@ export const systemsAPI = {
         }
     },
 
+    // Get pending/discovered agents
+    getPending: async () => {
+        const response = await fetch(`${API_BASE}/pending`, {
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to fetch pending agents');
+        return response.json();
+    },
+
     // Get single system
     getById: async (id) => {
         const response = await fetch(`${API_BASE}/${id}`, {

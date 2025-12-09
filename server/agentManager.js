@@ -98,9 +98,27 @@ const getAgentSocket = (systemId) => {
     return agentSockets.get(systemId);
 };
 
+const getSocketId = (systemId) => {
+    const socket = agentSockets.get(systemId);
+    return socket ? socket.id : null;
+};
+
+const getConnectedAgents = () => {
+    const agents = [];
+    for (const [id, socket] of agentSockets.entries()) {
+        agents.push({
+            id,
+            ip: socket.handshake.address || socket.request.connection.remoteAddress
+        });
+    }
+    return agents;
+};
+
 module.exports = {
     handleAgentConnection,
     sendCommand,
     isAgentConnected,
-    getAgentSocket
+    getAgentSocket,
+    getSocketId,
+    getConnectedAgents
 };
