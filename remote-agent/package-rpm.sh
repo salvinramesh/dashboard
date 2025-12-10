@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-VERSION="1.1.8"
+VERSION="1.1.10"
 ARCH="x86_64"
 PACKAGE_NAME="actionfi-agent"
 BUILD_DIR="build_rpm"
@@ -60,8 +60,8 @@ Summary:        ActionFi Remote Monitoring Agent
 License:        Proprietary
 Group:          System/Monitoring
 URL:            http://actionfi.com
-Requires:       ffmpeg
-Requires:       libatomic1
+# Requires:       ffmpeg
+# Requires:       libatomic.so.1
 # ydotool is optional (install manually for remote input)
  
 # Disable binary stripping as it breaks pkg binaries
@@ -148,3 +148,16 @@ mkdir -p ${DIST_DIR}
 cp ${BUILD_DIR}/RPMS/${ARCH}/${PACKAGE_NAME}-${VERSION}-1.${ARCH}.rpm ${DIST_DIR}/
 
 echo "Success! Package created: ${DIST_DIR}/${PACKAGE_NAME}-${VERSION}-1.${ARCH}.rpm"
+
+# 7. Generate Repo File (RHEL/CentOS/Fedora)
+echo "Generating actionfi.repo..."
+cat > ${DIST_DIR}/actionfi.repo <<REPO
+[actionfi]
+name=ActionFi Repository
+baseurl=${DASHBOARD_URL}/repo/rpm
+enabled=1
+gpgcheck=1
+gpgkey=${DASHBOARD_URL}/repo/rpm/RPM-GPG-KEY-actionfi
+REPO
+
+echo "Repo file created: ${DIST_DIR}/actionfi.repo"

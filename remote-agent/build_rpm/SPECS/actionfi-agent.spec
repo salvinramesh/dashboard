@@ -1,12 +1,12 @@
 Name:           actionfi-agent
-Version:        1.1.8
+Version:        1.1.10
 Release:        1
 Summary:        ActionFi Remote Monitoring Agent
 License:        Proprietary
 Group:          System/Monitoring
 URL:            http://actionfi.com
-Requires:       ffmpeg
-Requires:       libatomic1
+# Requires:       ffmpeg
+# Requires:       libatomic.so.1
 # ydotool is optional (install manually for remote input)
  
 # Disable binary stripping as it breaks pkg binaries
@@ -34,7 +34,7 @@ cp /var/www/dashboard/remote-agent/build_rpm/SOURCES/actionfi-agent.service %{bu
 # Reload systemd and enable service
 echo "Generating Agent ID..."
 if [ ! -f /etc/actionfi-agent-id ]; then
-    uuidgen > /etc/actionfi-agent-id || echo "Manual-ID-1765305789" > /etc/actionfi-agent-id
+    uuidgen > /etc/actionfi-agent-id || echo "Manual-ID-1765358170" > /etc/actionfi-agent-id
 fi
 chmod 600 /etc/actionfi-agent-id
 
@@ -71,5 +71,5 @@ if [ $1 -ge 1 ]; then
 fi
 
 %changelog
-* Tue Dec 09 2025 ActionFi <support@actionfi.com> - 1.1.8-1
-- Release v1.1.8
+* Tue Dec 09 2025 ActionFi <support@actionfi.com> - 1.1.10-1
+- Release v1.1.10
