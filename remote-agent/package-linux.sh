@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-VERSION="1.1.4"
+VERSION="1.1.8"
 ARCH="amd64"
 PACKAGE_NAME="actionfi-agent"
 BUILD_DIR="build_deb"
